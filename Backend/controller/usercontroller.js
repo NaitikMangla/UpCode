@@ -1,11 +1,15 @@
 const usermodel = require('../model/usermodel');
 
 const getUserData = async (req, res) => {
-    try{
-        const {userId} = req.body.userId || req.userId;
+    try {
+        const userId = req.body.userId || req.userId; 
+        console.log("Received User ID:", userId);
+
+        if (!userId) return res.status(400).json({ error: "User ID is required" });
+
         const user = await usermodel.findById(userId);
-        if(!user) return res.status(404).json({error: "User not found"});
-        
+        if (!user) return res.status(404).json({ error: "User not found" });
+
         res.json({
             success: true,
             userData: {
@@ -13,11 +17,12 @@ const getUserData = async (req, res) => {
                 email: user.email,
                 isAccountVerified: user.isAccountVerified,
             }
-        })
+        });
 
-    } catch(err){
-        return res.status(500).json({error: "Internal Server Error"});
+    } catch (err) {
+        console.error("Error fetching user data:", err);
+        return res.status(500).json({ error: "Internal Server Error" });
     }
-}
+};
 
 module.exports = getUserData;
