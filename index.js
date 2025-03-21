@@ -6,7 +6,7 @@ const cookieParser = require('cookie-parser')
 const path = require('path');
 const cors = require('cors');
 const {createServer} = require('http');
-const {initializeSocket} = require('./socket')
+const {initializeSocket} = require('./services/socket')
 
 //routers
 const playRouter = require('./router/problem')
@@ -15,7 +15,7 @@ const userRoutes = require('./router/userroutes');
 
 //server initialisation
 const app = express()
-const server = createServer(app);
+const server = createServer(app); 
 initializeSocket(server)
 
 // view engine setup
@@ -23,17 +23,24 @@ app.set('view engine', 'ejs')
 app.set('views', path.join(__dirname, 'views'))
 
 // database connection
-const connectDB = require('./DB/db');
-connectDB().then(() => {
-    app.listen(port, () => {
-        console.log(`Server is running on port ${port}`);
-    });
-}).catch(err => {
-    console.error("MongoDB Connection Failed:", err);
-});
+// const connectDB = require('./DB/db');
+// connectDB().then(() => {
+//     app.listen(port, () => {
+//         console.log(`Server is running on port ${port}`);
+//     });
+// }).catch(err => {
+//     console.error("MongoDB Connection Failed:", err);
+// });
+const {connectLocalDB} = require('./LocalDB_Connection/connect')
+connectLocalDB()
 
 //middlewares
-app.use(cors({ credentials: true }));
+app.use(cors({
+    origin: "http://localhost:5173",  // Allow frontend
+    credentials: true,  // Allow cookies if needed
+    methods: ["GET", "POST"],  // Allowed methods
+    allowedHeaders: ["Content-Type", "Authorization"]  // Allowed headers
+}));
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));

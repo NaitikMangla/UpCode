@@ -1,4 +1,5 @@
-const {get, set, remove} = require('../submitMap')
+const {get, set, remove} = require('../services/submitMap')
+const problemModel = require('../model/problem');
 
 async function handleSubmission(data, socket) {
     const url = process.env.JUDGE_URL + "?base64_encoded=true&wait=false&fields=*"
@@ -70,7 +71,19 @@ async function handleResult(req, res, next) {
     return res.json({message: "Result sent to client"})
 }
 
+async function getProblem(req, res){
+    const problemId = req.params.id
+    const problemData = await problemModel.findOne({id : problemId})
+    console.log({problemId, problemData})
+    if(!problemData)
+    {
+        return res.json({error : "fail"})
+    }
+    return res.json(problemData)
+}
+
 module.exports = {
     handleSubmission,
-    handleResult
+    handleResult,
+    getProblem
 }
