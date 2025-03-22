@@ -82,8 +82,18 @@ async function getProblem(req, res){
     return res.json(problemData)
 }
 
+async function getAllProblem(req, res){
+    const problemData = await problemModel.find({},{_id:0, title : 1, id : 1})
+    if(!problemData)
+    {
+        return res.json({error : "fail"})
+    }
+    return res.json(problemData)
+}
+
 module.exports = {
     handleSubmission,
     handleResult,
-    getProblem
+    getProblem,
+    getAllProblem
 }

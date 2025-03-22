@@ -15,7 +15,7 @@ const userRoutes = require('./router/userroutes');
 
 //server initialisation
 const app = express()
-const server = createServer(app); 
+const server = createServer(app);
 initializeSocket(server)
 
 // view engine setup
@@ -41,13 +41,13 @@ app.use(cors({
     methods: ["GET", "POST"],  // Allowed methods
     allowedHeaders: ["Content-Type", "Authorization"]  // Allowed headers
 }));
-app.use(express.json());
 app.use(cookieParser());
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 //route handlers
-app.use('/problem', playRouter)
 app.get('/', (req, res)=>{res.send('Welcome to UpCode Backend')})
+app.use('/problem', playRouter)
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 

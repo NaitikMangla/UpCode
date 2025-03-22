@@ -5,6 +5,7 @@ const transporter = require('../services/mailservice');
 
 const register = async (req, res) => {
     const { name, email, password } = req.body;
+    // console.log({name, email, password})
 
     if (!name || !email || !password) {
         return res.status(400).json({ error: 'All fields are required' });
@@ -18,8 +19,8 @@ const register = async (req, res) => {
         const user = new usermodel({ name, email, password: hashedPassword });
         await user.save();
 
-        const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-        res.cookie('token', token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000 });
+        const token = jwt.sign({email}, process.env.JWT_SECRET);
+        res.cookie('token', token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite : 'lax'});
 
         const welcomeMessage = {
             from: process.env.EMAIL,
@@ -28,9 +29,11 @@ const register = async (req, res) => {
             text: `Hello ${name}, Welcome to UpCode. We are happy to have you here.`,
         };
 
-        await transporter.sendMail(welcomeMessage);
-
-        return res.json({ message: 'User registered successfully' });
+        transporter.sendMail(welcomeMessage)
+        .then(()=>{console.log("Message sent!")})
+        .catch(()=>{console.log("Some error occured")});
+        console.log('Registered!')
+        return res.status(202).json({message : "successfull registration"});
     } catch (err) {
         return res.status(500).json({ error: 'Internal server error' });
     }
@@ -46,8 +49,8 @@ const login = async (req, res) => {
             return res.status(400).json({ error: 'Invalid credentials' });
         }
 
-        const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-        res.cookie('token', token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000 });
+        const token = jwt.sign({ email }, process.env.JWT_SECRET);
+        res.cookie('token',token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite : 'lax' });
 
         return res.json({ message: 'Login successful' });
     } catch (err) {
