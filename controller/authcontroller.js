@@ -59,7 +59,7 @@ const login = async (req, res) => {
 };
 
 const logout = (req, res) => {
-    res.clearCookie('token');
+    res.clearCookie('token',{path: '/'});
     return res.json({ message: 'Logged out successfully' });
 };
 
@@ -68,10 +68,14 @@ const sendverifyOTP = async (req, res) => {
         const user = await usermodel.findById(req.userId);
         if (user.isAccountVerified) return res.status(400).json({ error: 'Account already verified' });
 
+        console.log('user',user)
+
         const otp = Math.floor(100000 + Math.random() * 900000);
         user.verifyOTP = otp;
         user.verifyOTPExpireAt = Date.now() + 600000; // 10 minutes
         await user.save();
+
+        console.log('otpp',otp)
         
         const verifyMessage = {
             from: `"UpCode Support" <${process.env.EMAIL}>`,
@@ -148,6 +152,8 @@ const verifyemail = async (req, res) => {
 
 const isAuthenticated = async (req, res) => {
     try{
+        // const {user} = req.body;
+        // user.isAccountVerified = true;
         return res.status(200).json({ success: true});
     } catch(err){
         return res.status(500).json({ error: 'Internal server error'});
