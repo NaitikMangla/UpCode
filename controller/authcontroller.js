@@ -40,6 +40,7 @@ const register = async (req, res) => {
 };
 
 const login = async (req, res) => {
+    console.log("logging...")
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'All fields are required' });
 
@@ -60,7 +61,7 @@ const login = async (req, res) => {
 
 const logout = (req, res) => {
     res.clearCookie('token',{path: '/'});
-    return res.json({ message: 'Logged out successfully' });
+    return res.json({ message: 'Logged out successfully' , success:"true"});
 };
 
 const sendverifyOTP = async (req, res) => {

@@ -1,6 +1,5 @@
 require('dotenv').config()
 
-// const HOST = '127.0.0.1';
 // packages
 const express = require('express');
 const mongoose = require('mongoose');
@@ -25,18 +24,18 @@ app.set('view engine', 'ejs')
 app.set('views', path.join(__dirname, 'views'))
 
 // database connection
-const connectDB = require('./DB/db');
-connectDB().then(() => {
-    // app.listen(port, () => {
-    //     console.log(`Server is running on port ${port}`);
-    // });
-}).catch(err => {
-    console.error("MongoDB Connection Failed:", err);
-});
+// const connectDB = require('./DB/db');
+// connectDB().then(() => {
+//     // app.listen(port, () => {
+//     //     console.log(`Server is running on port ${port}`);
+//     // });
+// }).catch(err => {
+//     console.error("MongoDB Connection Failed:", err);
+// });
 
 
-// const {connectLocalDB} = require('./LocalDB_Connection/connect')
-// connectLocalDB()
+const {connectLocalDB} = require('./LocalDB_Connection/connect')
+connectLocalDB()
 
 //middlewares
 app.use(cors({
