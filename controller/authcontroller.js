@@ -156,6 +156,7 @@ const login = async (req, res) => {
 
 const logout = (req, res) => {
     res.clearCookie('token',{path: '/'});
+
     return res.json({ message: 'Logged out successfully' , success:"true"});
 };
 
@@ -165,7 +166,7 @@ const sendverifyOTP = async (req, res) => {
 
         // console.log('User:', user);
 
-        if (req.userData.isAccountVerified) return res.status(400).json({ error: 'Account already verified' });
+        // if (req.userData.isAccountVerified) return res.status(400).json({ error: 'Account already verified' });
 
         const otp = Math.floor(100000 + Math.random() * 900000);
         req.userData.verifyOTP = otp;
@@ -211,7 +212,7 @@ const sendverifyOTP = async (req, res) => {
         await sendMailPromise(verifyMessage);
 
         // console.log("Verify OTP sent successfully");
-        return res.json({ message: "Verification OTP sent successfully", success: true });
+        return res.json({ message: "Verification OTP sent successfully", success: "true" });
 
     } catch (err) {
         console.error("Error:", err);
@@ -266,6 +267,8 @@ const sendResetOTP = async (req, res) => {
         const otp = Math.floor(100000 + Math.random() * 900000);
         user.resetOTP = otp;
         user.resetOTPExpireAt = Date.now() + 600000; // 10 minutes
+        const token = jwt.sign({email}, process.env.JWT_SECRET);
+        res.cookie('token', token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite : 'lax'});
         await user.save();
 
         const resetMessage = {
@@ -404,7 +407,7 @@ const sendResetOTP = async (req, res) => {
             }
         })
 
-        return res.json({message: 'Reset OTP sent successfully'});
+        return res.json({message: 'Reset OTP sent successfully', success: "true"});
 
     } catch(err){
         return res.status(500).json({error: 'Internal server error'});
@@ -412,22 +415,23 @@ const sendResetOTP = async (req, res) => {
 }
 
 const resetPassword = async (req, res) => {
-    const {email, otp, password} = req.body;
-    if(!email || !otp || !password) return res.status(400).json({error: 'All fields are required'});
+    const {password} = req.body;
+    if(!password) return res.status(400).json({error: 'All fields are required'});
+    // const {email, otp, password} = req.body;
+    // if(!email || !otp || !password) return res.status(400).json({error: 'All fields are required'});
 
     try{
-        const user = await usermodel.findOne({email: email});
+        const user = await usermodel.findOne({email: req.userData.email});
         if(!user) return res.status(400).json({error: 'User not found'});
-        if(Number(user.resetOTP) !== Number(otp)) return res.status(400).json({error: 'Invalid OTP'});
-        if(Date.now() > user.resetOTPExpireAt) return res.status(400).json({error: 'OTP expired'});
-
+        // if(Number(user.resetOTP) !== Number(otp)) return res.status(400).json({error: 'Invalid OTP'});
+        // if(Date.now() > user.resetOTPExpireAt) return res.status(400).json({error: 'OTP expired'});
         const hashedPassword = await bcrypt.hash(password, 10);
         user.password = hashedPassword;
         user.resetOTP = '';
         user.resetOTPExpireAt = 0;
         await user.save();
 
-        return res.json({message: 'Password reset successfully'});
+        return res.json({message: 'Password reset successfully', success: "true"});
     } catch(err){
         return res.status(500).json({error: 'Internal server error'});
     }

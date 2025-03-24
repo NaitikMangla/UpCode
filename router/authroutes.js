@@ -12,6 +12,6 @@ router.post('/verify_account', userAuth, verifyemail);
 router.get('/is_authenticated', userAuth, isAuthenticated); // changed to get
 router.post('/send_reset_otp', sendResetOTP);
 
-router.post('/reset_password', resetPassword); // This route requires userAuth middleware, which verifies the token in the request header
+router.post('/reset_password', userAuth, resetPassword); // This route requires userAuth middleware, which verifies the token in the request header
 
 module.exports = router;
