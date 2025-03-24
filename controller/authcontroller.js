@@ -40,7 +40,7 @@ const register = async (req, res) => {
 };
 
 const login = async (req, res) => {
-    console.log("logging...")
+    // console.log("logging...")
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'All fields are required' });
 
@@ -66,21 +66,22 @@ const logout = (req, res) => {
 
 const sendverifyOTP = async (req, res) => {
     try {
-        const user = await usermodel.findById(req.userId);
-        if (user.isAccountVerified) return res.status(400).json({ error: 'Account already verified' });
+        // const user = await usermodel.findOne(req.email);
 
-        console.log('user',user)
+        // console.log('User:', user);
+
+        if (req.userData.isAccountVerified) return res.status(400).json({ error: 'Account already verified' });
 
         const otp = Math.floor(100000 + Math.random() * 900000);
-        user.verifyOTP = otp;
-        user.verifyOTPExpireAt = Date.now() + 600000; // 10 minutes
-        await user.save();
+        req.userData.verifyOTP = otp;
+        req.userData.verifyOTPExpireAt = Date.now() + 600000; // 10 minutes
+        await req.userData.save();
 
-        console.log('otpp',otp)
+        // console.log('Generated OTP:', otp);
         
         const verifyMessage = {
             from: `"UpCode Support" <${process.env.EMAIL}>`,
-            to: user.email,
+            to: req.userData.email,
             subject: '🔐 Verify Your UpCode Account',
             html: `
                 <html>
@@ -95,7 +96,7 @@ const sendverifyOTP = async (req, res) => {
                 <body>
                     <div class="container">
                         <h2>🔒 Verify Your UpCode Account</h2>
-                        <p>Dear <strong>${user.name}</strong>,</p>
+                        <p>Dear <strong>${req.userData.name}</strong>,</p>
                         <p>Your One-Time Password (OTP) for account verification is:</p>
                         <p class="otp">${otp}</p>
                         <p>Please enter this OTP within the next <strong>10 minutes</strong>.</p>
@@ -110,42 +111,41 @@ const sendverifyOTP = async (req, res) => {
                 </html>
             `,
         };
-        
 
-        await transporter.sendMail(verifyMessage, (err, info) => {
-            if (err) {
-                console.error("Email sending failed:", err); // 🛠️ Log full error
-                return res.status(500).json({ error: "Failed to send OTP", details: err });
-            } else {
-                console.log("Verify OTP sent successfully:", info.response);
-                return res.json({ message: "Verification OTP sent successfully" });
-            }
-        });
+        const sendMailPromise = require('util').promisify(transporter.sendMail.bind(transporter));
+        await sendMailPromise(verifyMessage);
 
-        return res.json({ message: 'Verification OTP sent successfully' });
+        // console.log("Verify OTP sent successfully");
+        return res.json({ message: "Verification OTP sent successfully", success: true });
+
     } catch (err) {
+        console.error("Error:", err);
         return res.status(500).json({ error: 'Internal server error' });
     }
 };
+
 
 const verifyemail = async (req, res) => {
     const { otp } = req.body;
     if (!otp) return res.status(400).json({ error: 'OTP is required' });
 
+    // console.log('OTP:', otp);
+    console.log('req Body', req.body);
+
     try {
-        const user = await usermodel.findById(req.userId);
-        if (user.isAccountVerified) return res.status(400).json({ error: 'Account already verified' });
+        // const user = await usermodel.findById(req.userId);
+        if (req.userData.isAccountVerified) return res.status(400).json({ error: 'Account already verified' });
 
-        if (Number(user.verifyOTP) !== Number(otp)) return res.status(400).json({ error: 'Invalid OTP' });
+        if (Number(req.userData.verifyOTP) !== Number(otp)) return res.status(400).json({ error: 'Invalid OTP' });
 
-        if (Date.now() > user.verifyOTPExpireAt) return res.status(400).json({ error: 'OTP expired' });
+        if (Date.now() > req.userData.verifyOTPExpireAt) return res.status(400).json({ error: 'OTP expired' });
 
-        user.verifyOTP = '';
-        user.verifyOTPExpireAt = 0;
-        user.isAccountVerified = true;
-        await user.save();
+        req.userData.verifyOTP = '';
+        req.userData.verifyOTPExpireAt = 0;
+        req.userData.isAccountVerified = true;
+        await req.userData.save();
 
-        return res.json({ message: 'Account verified successfully' });
+        return res.status(200).json({ message: 'Account verified successfully' , success: "true"});
     } catch (err) {
         return res.status(500).json({ error: 'Internal server error' });
     }
