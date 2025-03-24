@@ -11,6 +11,12 @@ const register = async (req, res) => {
         return res.status(400).json({ error: 'All fields are required' });
     }
 
+    const allowedDomains = ['gmail.com', 'nitkkr.ac.in', 'icloud.com'];
+    const emailDomain = email.split('@')[1]; 
+    if (!allowedDomains.includes(emailDomain)) {
+        return res.status(400).json({ error: 'Only Gmail and NIT Kurukshetra emails are allowed' });
+    }
+
     try {
         const existingUser = await usermodel.findOne({ email });
         if (existingUser) return res.status(400).json({ error: 'User already exists' });
@@ -23,11 +29,100 @@ const register = async (req, res) => {
         res.cookie('token', token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite : 'lax'});
 
         const welcomeMessage = {
-            from: process.env.EMAIL,
+            from: `"UpCode Support" <${process.env.EMAIL}>`,
             to: email,
-            subject: 'Welcome to UpCode',
-            text: `Hello ${name}, Welcome to UpCode. We are happy to have you here.`,
+            subject: '🎉 Welcome to UpCode!',
+            html: `
+                <html>
+                <head>
+                    <style>
+                        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+        
+                        body { 
+                            font-family: 'Poppins', sans-serif; 
+                            background: #f4f4f4; 
+                            color: #333; 
+                            text-align: center; 
+                            padding: 40px 0;
+                        }
+        
+                        .container { 
+                            max-width: 450px; 
+                            margin: auto; 
+                            padding: 25px; 
+                            border-radius: 15px; 
+                            background: white; 
+                            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+                            text-align: center;
+                            animation: fadeIn 1.5s ease-in-out;
+                        }
+        
+                        @keyframes fadeIn {
+                            from { opacity: 0; transform: translateY(-10px); }
+                            to { opacity: 1; transform: translateY(0); }
+                        }
+        
+                        h2 { 
+                            font-size: 24px; 
+                            margin-bottom: 15px;
+                            color: #007bff;
+                            text-shadow: 0px 0px 10px rgba(0, 123, 255, 0.2);
+                        }
+        
+                        .greeting {
+                            font-size: 18px; 
+                            color: #555; 
+                            margin-bottom: 15px;
+                        }
+        
+                        .highlight {
+                            color: #ffcc00; 
+                            font-weight: bold;
+                        }
+        
+                        .footer { 
+                            font-size: 12px; 
+                            color: #777; 
+                            margin-top: 20px; 
+                        }
+        
+                        .btn {
+                            display: inline-block;
+                            margin-top: 15px;
+                            padding: 12px 25px;
+                            background: #007bff;
+                            color: white;
+                            font-weight: bold;
+                            border-radius: 8px;
+                            text-decoration: none;
+                            transition: 0.3s;
+                            box-shadow: 0px 0px 10px rgba(0, 123, 255, 0.2);
+                        }
+        
+                        .btn:hover {
+                            background: #0056b3;
+                            transform: scale(1.05);
+                            box-shadow: 0px 0px 15px rgba(0, 86, 179, 0.5);
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <h2>🎉 Welcome to UpCode, ${name}!</h2>
+                        <p class="greeting">We're excited to have you on board. UpCode is here to make your coding journey <span class="highlight">amazing</span>! 🚀</p>
+                        <p>Start exploring, solving challenges, and growing as a developer with us.</p>
+                        <a href="${process.env.FRONTEND_URL}" class="btn">Explore UpCode</a>
+                        <div class="footer">
+                            <p>Happy coding! 🔥</p>
+                            <p><strong>UpCode Team</strong></p>
+                            <p>If you didn’t sign up, you can ignore this email.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `,
         };
+        
 
         transporter.sendMail(welcomeMessage)
         .then(()=>{console.log("Message sent!")})
