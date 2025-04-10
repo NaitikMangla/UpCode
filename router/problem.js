@@ -7,4 +7,4 @@ router.all('/callback', handleResult)
 router.get('/all', getAllProblem)
 router.get('/:id', getProblem)
 
-module.exports = router
+module.exports = router 

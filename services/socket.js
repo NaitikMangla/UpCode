@@ -6,7 +6,7 @@ let io;
 function initializeSocket(server) {
     io = new Server(server, {
         cors: {
-            origin: "*"
+            origin: "http://localhost:5173",
         }
     });
 
