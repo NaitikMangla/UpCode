@@ -16,7 +16,11 @@ const problemSchema = new Schema({
         required : true,
         unique : true
     },
-    sample : {
+    sampleInput : {
+        type : String,
+        required : true
+    },
+    sampleOutput:{
         type : String,
         required : true
     },
@@ -30,14 +34,16 @@ const problemSchema = new Schema({
         type : String,
         required : true,
     },
-    hiddenTestcase : {
+    hiddenTestCases : {
         type : [String],
         default : []
     },
     solutions : {
         type : [String],
         default : []
-    }
+    },
+    timeLimit : Number,
+    memoryLimit : Number
 })
 
 const problemModel = model('Problem', problemSchema)

@@ -12,8 +12,18 @@ function remove(token){
     submitMap.delete(token)
 }
 
+function clear(){
+    submitMap.clear()
+}
+
+function size(){
+    return submitMap.size()
+}
+
 module.exports = {
     get,
     set,
-    remove
+    remove,
+    clear,
+    size
 }

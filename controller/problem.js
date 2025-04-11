@@ -1,9 +1,62 @@
 const {get, set, remove} = require('../services/submitMap')
+const {get : jget, set : jset, remove : jremove} = require('../services/judgeMap')
 const problemModel = require('../model/problem');
 
-async function handleSubmission(data, socket) {
+async function getProblem(req, res){
+    const problemId = req.params.id
+    const problemData = await problemModel.findOne({id : problemId}, {_id : 0, hiddenTestCases : 0, solutions : 0})
+    console.log({problemId, problemData})
+    if(!problemData)
+    {
+        return res.json({error : "fail"})
+    }
+    return res.json(problemData)
+}
+
+async function getAllProblem(req, res){
+    const problemData = await problemModel.find({},{_id:0, title : 1, id : 1})
+    if(!problemData)
+    {
+        return res.json({error : "fail"})
+    }
+    return res.json(problemData)
+}
+
+async function handleRun(data, socket) {
     const url = process.env.JUDGE_URL + "?base64_encoded=true&wait=false&fields=*"
     console.log(data.srccode)
+    const options = {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            language_id: data.lang,
+            source_code: btoa(data.srccode),
+            stdin: btoa(data.stdin),
+            callback_url: process.env.CALLBACK_URL + "/run", // webhooks
+            cpu_time_limit: data.timeLimit || 5, // deafult to 5 seconds
+            memory_limit : data.memoryLimit || 262144 // default to 256 mb
+        })
+    }
+
+    try {
+        const response = await fetch(url, options);
+        const result = await response.json();
+        socket.emit('runCode')
+        set(result.token, socket)
+        console.log(result)
+        return true
+    } catch (error) {
+        console.log('Run Error --> ', error.message)
+        socket.emit('error', error.message)
+        return false;
+    }
+}
+
+async function handleSubmit(data, socket, testNumber){
+    const url = process.env.JUDGE_URL + "?base64_encoded=true&wait=false&fields=*"
+    console.log(data)
     const options = {
         method: 'POST',
         headers: {
@@ -13,22 +66,34 @@ async function handleSubmission(data, socket) {
             language_id: data.lang,
             source_code: btoa(data.srccode),
             stdin: btoa(data.stdin),
-            callback_url: process.env.CALLBACK_URL,
-            cpu_time_limit: 5
+            callback_url: process.env.CALLBACK_URL + "/submit", // webhooks
+            cpu_time_limit: data.timeLimit || 5, // deafult to 5 seconds
+            memory_limit : data.memoryLimit || 262144 // default to 256 mb
         })
     }
 
-    try {
+    try{
         const response = await fetch(url, options);
-        result = await response.json();
-        socket.emit('submitted')
+        const result = await response.json();
         set(result.token, socket)
-        console.log(result)
+        socket.emit('processing', {testNumber})
         return true
-    } catch (error) {
-        socket.emit('err', error.message)
+    }
+    catch(err){
+        socket.emit('error', err.message)
+        console.log('Submission Error --> ', err.message)
         return false;
     }
+}
+
+function normalizeResult(str){
+    str = str.replace(/\r\n/g, '\n').trim();
+    return str
+}
+
+function judgeSolution(output, expectedOutput) {
+    console.log({output, expectedOutput})
+    return normalizeResult(output) === normalizeResult(expectedOutput)
 }
 
 function getOutput(data) {
@@ -38,7 +103,7 @@ function getOutput(data) {
         case 2:
             return "⚙️ Processing";
         case 3:
-            return  atob(data.stdout)
+            return data.stdout!=null? atob(data.stdout) : "No output!"
         case 4:
             return  "Wrong answer"
         case 5:
@@ -61,39 +126,45 @@ function getOutput(data) {
     }
 }
 
-async function handleResult(req, res, next) {
+async function handleRunResult(req, res, next) {
     const data = req.body
-    console.log(data)
-    let result = getOutput(data)
+    const result = {
+        output: getOutput(data),
+        timeUtilized: Number(data.time) * 1000,
+        memoryUtilized: Number(data.memory)
+    }
     let socket = get(data.token)
-    socket.emit('codeResult', result)
+    socket.emit('runResult', result)
     remove(data.token)
     return res.json({message: "Result sent to client"})
 }
 
-async function getProblem(req, res){
-    const problemId = req.params.id
-    const problemData = await problemModel.findOne({id : problemId})
-    console.log({problemId, problemData})
-    if(!problemData)
+function handleSubmitResult(req, res, next){
+    const data = req.body
+    const socket = get(data.token)
+    const judgeObj = jget(socket.id)
+    const accepted = judgeSolution(getOutput(data), judgeObj.getExpectedOutput())
+    console.log("verdict : ", accepted)
+    if(accepted)
     {
-        return res.json({error : "fail"})
+        console.log("Accepted")
+        socket.emit("testPassed", {testNumber : judgeObj.getTestNumber()})
+        judgeObj.resume()
     }
-    return res.json(problemData)
-}
-
-async function getAllProblem(req, res){
-    const problemData = await problemModel.find({},{_id:0, title : 1, id : 1})
-    if(!problemData)
-    {
-        return res.json({error : "fail"})
+    else{
+        console.log("Not Accepted")
+        socket.emit("testFailed", {testNumber : judgeObj.getTestNumber()})
+        judgeObj.end("rejected")
     }
-    return res.json(problemData)
+    remove(data.token)
+    return res.json({message: "Result sent to client"})
 }
 
 module.exports = {
-    handleSubmission,
-    handleResult,
+    handleRun,
+    handleRunResult,
+    handleSubmit,
+    handleSubmitResult,
     getProblem,
     getAllProblem
 }
