@@ -1,4 +1,5 @@
 require('dotenv').config()
+
 // packages
 const express = require('express');
 const mongoose = require('mongoose');
@@ -6,7 +7,7 @@ const cookieParser = require('cookie-parser')
 const path = require('path');
 const cors = require('cors');
 const {createServer} = require('http');
-const {initializeSocket} = require('./socket')
+const {initializeSocket} = require('./services/socket')
 
 //routers
 const playRouter = require('./router/problem')
@@ -25,22 +26,31 @@ app.set('views', path.join(__dirname, 'views'))
 // database connection
 const connectDB = require('./DB/db');
 connectDB().then(() => {
-    app.listen(port, () => {
-        console.log(`Server is running on port ${port}`);
-    });
+    // app.listen(port, () => {
+    //     console.log(`Server is running on port ${port}`);
+    // });
 }).catch(err => {
     console.error("MongoDB Connection Failed:", err);
 });
 
+
+// const {connectLocalDB} = require('./LocalDB_Connection/connect')
+// connectLocalDB()
+
 //middlewares
-app.use(cors({ credentials: true }));
-app.use(express.json());
+app.use(cors({
+    origin: "http://localhost:5173",  // Allow frontend
+    credentials: true,  // Allow cookies if needed
+    methods: ["GET", "POST"],  // Allowed methods
+    allowedHeaders: ["Content-Type", "Authorization"]  // Allowed headers
+}));
 app.use(cookieParser());
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 //route handlers
-app.use('/problem', playRouter)
 app.get('/', (req, res)=>{res.send('Welcome to UpCode Backend')})
+app.use('/problem', playRouter)
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 

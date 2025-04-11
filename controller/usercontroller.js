@@ -2,14 +2,7 @@ const usermodel = require('../model/usermodel');
 
 const getUserData = async (req, res) => {
     try {
-        const userId = req.body.userId || req.userId; 
-        console.log("Received User ID:", userId);
-
-        if (!userId) return res.status(400).json({ error: "User ID is required" });
-
-        const user = await usermodel.findById(userId);
-        if (!user) return res.status(404).json({ error: "User not found" });
-
+        let user = req.userData
         res.json({
             success: true,
             userData: {

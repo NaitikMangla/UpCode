@@ -5,9 +5,16 @@ const transporter = require('../services/mailservice');
 
 const register = async (req, res) => {
     const { name, email, password } = req.body;
+    // console.log({name, email, password})
 
     if (!name || !email || !password) {
         return res.status(400).json({ error: 'All fields are required' });
+    }
+
+    const allowedDomains = ['gmail.com', 'nitkkr.ac.in', 'icloud.com'];
+    const emailDomain = email.split('@')[1]; 
+    if (!allowedDomains.includes(emailDomain)) {
+        return res.status(400).json({ error: 'Only Gmail and NIT Kurukshetra emails are allowed' });
     }
 
     try {
@@ -18,25 +25,117 @@ const register = async (req, res) => {
         const user = new usermodel({ name, email, password: hashedPassword });
         await user.save();
 
-        const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-        res.cookie('token', token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000 });
+        const token = jwt.sign({email}, process.env.JWT_SECRET);
+        res.cookie('token', token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite : 'lax'});
 
         const welcomeMessage = {
-            from: process.env.EMAIL,
+            from: `"UpCode Support" <${process.env.EMAIL}>`,
             to: email,
-            subject: 'Welcome to UpCode',
-            text: `Hello ${name}, Welcome to UpCode. We are happy to have you here.`,
+            subject: '🎉 Welcome to UpCode!',
+            html: `
+                <html>
+                <head>
+                    <style>
+                        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+        
+                        body { 
+                            font-family: 'Poppins', sans-serif; 
+                            background: #f4f4f4; 
+                            color: #333; 
+                            text-align: center; 
+                            padding: 40px 0;
+                        }
+        
+                        .container { 
+                            max-width: 450px; 
+                            margin: auto; 
+                            padding: 25px; 
+                            border-radius: 15px; 
+                            background: white; 
+                            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+                            text-align: center;
+                            animation: fadeIn 1.5s ease-in-out;
+                        }
+        
+                        @keyframes fadeIn {
+                            from { opacity: 0; transform: translateY(-10px); }
+                            to { opacity: 1; transform: translateY(0); }
+                        }
+        
+                        h2 { 
+                            font-size: 24px; 
+                            margin-bottom: 15px;
+                            color: #007bff;
+                            text-shadow: 0px 0px 10px rgba(0, 123, 255, 0.2);
+                        }
+        
+                        .greeting {
+                            font-size: 18px; 
+                            color: #555; 
+                            margin-bottom: 15px;
+                        }
+        
+                        .highlight {
+                            color: #ffcc00; 
+                            font-weight: bold;
+                        }
+        
+                        .footer { 
+                            font-size: 12px; 
+                            color: #777; 
+                            margin-top: 20px; 
+                        }
+        
+                        .btn {
+                            display: inline-block;
+                            margin-top: 15px;
+                            padding: 12px 25px;
+                            background: #007bff;
+                            color: white;
+                            font-weight: bold;
+                            border-radius: 8px;
+                            text-decoration: none;
+                            transition: 0.3s;
+                            box-shadow: 0px 0px 10px rgba(0, 123, 255, 0.2);
+                        }
+        
+                        .btn:hover {
+                            background: #0056b3;
+                            transform: scale(1.05);
+                            box-shadow: 0px 0px 15px rgba(0, 86, 179, 0.5);
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <h2>🎉 Welcome to UpCode, ${name}!</h2>
+                        <p class="greeting">We're excited to have you on board. UpCode is here to make your coding journey <span class="highlight">amazing</span>! 🚀</p>
+                        <p>Start exploring, solving challenges, and growing as a developer with us.</p>
+                        <a href="${process.env.FRONTEND_URL}" class="btn">Explore UpCode</a>
+                        <div class="footer">
+                            <p>Happy coding! 🔥</p>
+                            <p><strong>UpCode Team</strong></p>
+                            <p>If you didn’t sign up, you can ignore this email.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `,
         };
+        
 
-        await transporter.sendMail(welcomeMessage);
-
-        return res.json({ message: 'User registered successfully' });
+        transporter.sendMail(welcomeMessage)
+        .then(()=>{console.log("Message sent!")})
+        .catch(()=>{console.log("Some error occured")});
+        console.log('Registered!')
+        return res.status(202).json({message : "successfull registration"});
     } catch (err) {
         return res.status(500).json({ error: 'Internal server error' });
     }
 };
 
 const login = async (req, res) => {
+    // console.log("logging...")
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'All fields are required' });
 
@@ -46,8 +145,8 @@ const login = async (req, res) => {
             return res.status(400).json({ error: 'Invalid credentials' });
         }
 
-        const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-        res.cookie('token', token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000 });
+        const token = jwt.sign({ email }, process.env.JWT_SECRET);
+        res.cookie('token',token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite : 'lax' });
 
         return res.json({ message: 'Login successful' });
     } catch (err) {
@@ -56,23 +155,29 @@ const login = async (req, res) => {
 };
 
 const logout = (req, res) => {
-    res.clearCookie('token');
-    return res.json({ message: 'Logged out successfully' });
+    res.clearCookie('token',{path: '/'});
+
+    return res.json({ message: 'Logged out successfully' , success:"true"});
 };
 
 const sendverifyOTP = async (req, res) => {
     try {
-        const user = await usermodel.findById(req.userId);
-        if (user.isAccountVerified) return res.status(400).json({ error: 'Account already verified' });
+        // const user = await usermodel.findOne(req.email);
+
+        // console.log('User:', user);
+
+        // if (req.userData.isAccountVerified) return res.status(400).json({ error: 'Account already verified' });
 
         const otp = Math.floor(100000 + Math.random() * 900000);
-        user.verifyOTP = otp;
-        user.verifyOTPExpireAt = Date.now() + 600000; // 10 minutes
-        await user.save();
+        req.userData.verifyOTP = otp;
+        req.userData.verifyOTPExpireAt = Date.now() + 600000; // 10 minutes
+        await req.userData.save();
+
+        // console.log('Generated OTP:', otp);
         
         const verifyMessage = {
             from: `"UpCode Support" <${process.env.EMAIL}>`,
-            to: user.email,
+            to: req.userData.email,
             subject: '🔐 Verify Your UpCode Account',
             html: `
                 <html>
@@ -87,7 +192,7 @@ const sendverifyOTP = async (req, res) => {
                 <body>
                     <div class="container">
                         <h2>🔒 Verify Your UpCode Account</h2>
-                        <p>Dear <strong>${user.name}</strong>,</p>
+                        <p>Dear <strong>${req.userData.name}</strong>,</p>
                         <p>Your One-Time Password (OTP) for account verification is:</p>
                         <p class="otp">${otp}</p>
                         <p>Please enter this OTP within the next <strong>10 minutes</strong>.</p>
@@ -102,42 +207,41 @@ const sendverifyOTP = async (req, res) => {
                 </html>
             `,
         };
-        
 
-        await transporter.sendMail(verifyMessage, (err, info) => {
-            if (err) {
-                console.error("Email sending failed:", err); // 🛠️ Log full error
-                return res.status(500).json({ error: "Failed to send OTP", details: err });
-            } else {
-                console.log("Verify OTP sent successfully:", info.response);
-                return res.json({ message: "Verification OTP sent successfully" });
-            }
-        });
+        const sendMailPromise = require('util').promisify(transporter.sendMail.bind(transporter));
+        await sendMailPromise(verifyMessage);
 
-        return res.json({ message: 'Verification OTP sent successfully' });
+        // console.log("Verify OTP sent successfully");
+        return res.json({ message: "Verification OTP sent successfully", success: "true" });
+
     } catch (err) {
+        console.error("Error:", err);
         return res.status(500).json({ error: 'Internal server error' });
     }
 };
+
 
 const verifyemail = async (req, res) => {
     const { otp } = req.body;
     if (!otp) return res.status(400).json({ error: 'OTP is required' });
 
+    // console.log('OTP:', otp);
+    console.log('req Body', req.body);
+
     try {
-        const user = await usermodel.findById(req.userId);
-        if (user.isAccountVerified) return res.status(400).json({ error: 'Account already verified' });
+        // const user = await usermodel.findById(req.userId);
+        if (req.userData.isAccountVerified) return res.status(400).json({ error: 'Account already verified' });
 
-        if (Number(user.verifyOTP) !== Number(otp)) return res.status(400).json({ error: 'Invalid OTP' });
+        if (Number(req.userData.verifyOTP) !== Number(otp)) return res.status(400).json({ error: 'Invalid OTP' });
 
-        if (Date.now() > user.verifyOTPExpireAt) return res.status(400).json({ error: 'OTP expired' });
+        if (Date.now() > req.userData.verifyOTPExpireAt) return res.status(400).json({ error: 'OTP expired' });
 
-        user.verifyOTP = '';
-        user.verifyOTPExpireAt = 0;
-        user.isAccountVerified = true;
-        await user.save();
+        req.userData.verifyOTP = '';
+        req.userData.verifyOTPExpireAt = 0;
+        req.userData.isAccountVerified = true;
+        await req.userData.save();
 
-        return res.json({ message: 'Account verified successfully' });
+        return res.status(200).json({ message: 'Account verified successfully' , success: "true"});
     } catch (err) {
         return res.status(500).json({ error: 'Internal server error' });
     }
@@ -145,6 +249,8 @@ const verifyemail = async (req, res) => {
 
 const isAuthenticated = async (req, res) => {
     try{
+        // const {user} = req.body;
+        // user.isAccountVerified = true;
         return res.status(200).json({ success: true});
     } catch(err){
         return res.status(500).json({ error: 'Internal server error'});
@@ -161,6 +267,8 @@ const sendResetOTP = async (req, res) => {
         const otp = Math.floor(100000 + Math.random() * 900000);
         user.resetOTP = otp;
         user.resetOTPExpireAt = Date.now() + 600000; // 10 minutes
+        const token = jwt.sign({email}, process.env.JWT_SECRET);
+        res.cookie('token', token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite : 'lax'});
         await user.save();
 
         const resetMessage = {
@@ -299,7 +407,7 @@ const sendResetOTP = async (req, res) => {
             }
         })
 
-        return res.json({message: 'Reset OTP sent successfully'});
+        return res.json({message: 'Reset OTP sent successfully', success: "true"});
 
     } catch(err){
         return res.status(500).json({error: 'Internal server error'});
@@ -307,22 +415,23 @@ const sendResetOTP = async (req, res) => {
 }
 
 const resetPassword = async (req, res) => {
-    const {email, otp, password} = req.body;
-    if(!email || !otp || !password) return res.status(400).json({error: 'All fields are required'});
+    const {password} = req.body;
+    if(!password) return res.status(400).json({error: 'All fields are required'});
+    // const {email, otp, password} = req.body;
+    // if(!email || !otp || !password) return res.status(400).json({error: 'All fields are required'});
 
     try{
-        const user = await usermodel.findOne({email: email});
+        const user = await usermodel.findOne({email: req.userData.email});
         if(!user) return res.status(400).json({error: 'User not found'});
-        if(Number(user.resetOTP) !== Number(otp)) return res.status(400).json({error: 'Invalid OTP'});
-        if(Date.now() > user.resetOTPExpireAt) return res.status(400).json({error: 'OTP expired'});
-
+        // if(Number(user.resetOTP) !== Number(otp)) return res.status(400).json({error: 'Invalid OTP'});
+        // if(Date.now() > user.resetOTPExpireAt) return res.status(400).json({error: 'OTP expired'});
         const hashedPassword = await bcrypt.hash(password, 10);
         user.password = hashedPassword;
         user.resetOTP = '';
         user.resetOTPExpireAt = 0;
         await user.save();
 
-        return res.json({message: 'Password reset successfully'});
+        return res.json({message: 'Password reset successfully', success: "true"});
     } catch(err){
         return res.status(500).json({error: 'Internal server error'});
     }

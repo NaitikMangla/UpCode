@@ -1,12 +1,12 @@
 const { Server } = require('socket.io');
-const {handleSubmission} = require('./controller/problem')
+const {handleSubmission} = require('../controller/problem')
 
 let io;
 
 function initializeSocket(server) {
     io = new Server(server, {
         cors: {
-            origin: "*"
+            origin: "http://localhost:5173",
         }
     });
 

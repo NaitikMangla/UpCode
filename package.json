@@ -1,7 +1,7 @@
 {
   "name": "upcode",
   "version": "1.0.0",
-  "description": "Competetive platform to improve and compare your DSA skills with other members of NIT KKR",
+  "description": "Competetive platform to improve and compare your Tech skills with other members of NIT KKR",
   "main": "index.js",
   "scripts": {
     "start": "node --watch index.js",
