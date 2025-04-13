@@ -22,6 +22,60 @@ async function getAllProblem(req, res){
     return res.json(problemData)
 }
 
+function stringToArray(str, regex)
+{
+    let array = str.split(regex)
+    // console.log(array)
+    array = array.map((item) => item?.trim()).filter((item) => item !== "" && item !== undefined && item !== null);
+    return array
+}
+
+async function addProblem(req, res, next){
+    const data = req.body
+    // console.log(data)
+
+    // Check for empty fields --> Not accepted
+    for (const key in data) {
+        if (Object.prototype.hasOwnProperty.call(data, key)) {
+            if(key != 'timeLimit' && key != 'memoryLimit' && (data[key] == "" || data[key] == undefined || data[key] == null))
+            {
+                return res.json({error : `${key} is required`})
+            }
+        }
+    }
+
+    // Check for uniqueness of problem ID and title
+    const problemExists = await problemModel.exists({
+        $or: [
+            { title: data.title },
+            { id: data.id }
+        ]
+    });
+
+    if(problemExists) 
+    {
+        return res.json({error : 'ID or title already exists'})
+    }
+
+    // Processing Data into appropriate form
+    const keys = ["topics","hiddenTestCases", "solutions","timeLimit", "memoryLimit"]
+    data.hiddenTestCases = stringToArray(data.hiddenTestCases, /(\n{2,})|((\r\n){2,})/)
+    data.solutions = stringToArray(data.solutions, /(\n{2,})|((\r\n){2,})/)
+    data.topics = stringToArray(data.topics, /,/)
+    if(data.timeLimit) data.timeLimit = Number(data.timeLimit)
+    if(data.memoryLimit) data.memoryLimit = Number(data.memoryLimit)
+    for (const key in data) {
+        if(!keys.includes(key))
+        {
+            data[key] = data[key].trim()
+        }
+    }
+
+    // Create Doc and save to DB
+    await problemModel.create(data)
+    return res.status(202).json({message : "Problem added successfully"})
+}
+
 async function handleRun(data, socket) {
     const url = process.env.JUDGE_URL + "?base64_encoded=true&wait=false&fields=*"
     // console.log(data.srccode)
@@ -68,7 +122,7 @@ async function handleSubmit(data, socket, testNumber){
             stdin: btoa(data.stdin),
             callback_url: process.env.CALLBACK_URL + "/submit", // webhooks
             cpu_time_limit: data.timeLimit || 5, // deafult to 5 seconds
-            memory_limit : data.memoryLimit || 262144 // default to 256 mb
+            memory_limit : data.memoryLimit * 1024 || 262144 // default to 256*1024kb (256mb)
         })
     }
 
@@ -130,8 +184,8 @@ async function handleRunResult(req, res, next) {
     const data = req.body
     const result = {
         output: getOutput(data),
-        timeUtilized: Number(data.time) * 1000,
-        memoryUtilized: Number(data.memory)
+        timeUtilized: Number(data.time), // in seconds
+        memoryUtilized: Number(data.memory) // in kb
     }
     let socket = get(data.token)
     socket.emit('runResult', result)
@@ -166,5 +220,6 @@ module.exports = {
     handleSubmit,
     handleSubmitResult,
     getProblem,
-    getAllProblem
+    getAllProblem,
+    addProblem
 }
