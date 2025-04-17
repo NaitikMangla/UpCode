@@ -78,7 +78,7 @@ async function addProblem(req, res, next){
 
 async function handleRun(data, socket) {
     const url = process.env.JUDGE_URL + "?base64_encoded=true&wait=false&fields=*"
-    // console.log(data.srccode)
+    console.log(data.srccode)
     const options = {
         method: 'POST',
         headers: {
