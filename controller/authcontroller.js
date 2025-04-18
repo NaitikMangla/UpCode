@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const usermodel = require('../model/usermodel');
 const transporter = require('../services/mailservice');
+const requestModel = require('../model/requests');
 
 const register = async (req, res) => {
     const { name, email, password } = req.body;
@@ -156,7 +157,7 @@ const login = async (req, res) => {
 
 const logout = (req, res) => {
     res.clearCookie('token',{path: '/'});
-
+    req.userData.isAccountVerified = true;
     return res.json({ message: 'Logged out successfully' , success:"true"});
 };
 
@@ -166,7 +167,7 @@ const sendverifyOTP = async (req, res) => {
 
         // console.log('User:', user);
 
-        // if (req.userData.isAccountVerified) return res.status(400).json({ error: 'Account already verified' });
+        if (req.userData.isAccountVerified) return res.status(200).json({ message: 'Account already verified' });
 
         const otp = Math.floor(100000 + Math.random() * 900000);
         req.userData.verifyOTP = otp;
@@ -437,4 +438,70 @@ const resetPassword = async (req, res) => {
     }
 }
 
-module.exports = { register, login, logout, sendverifyOTP, verifyemail, isAuthenticated, sendResetOTP, resetPassword };
+const verify_platforms_id = async (req, res) => {
+    const { leetcode_id, gfg_id, codeforces_id, codechef_id } = req.body;
+    if (!leetcode_id && !gfg_id && !codeforces_id && !codechef_id) return res.status(400).json({ error: 'At least one platform ID is required' });
+
+    try {
+        const user = req.userData;
+        if (!user) return res.status(400).json({ error: 'User not found' });
+
+        if (leetcode_id){
+            user.leetcode_id = leetcode_id;
+            user.leetcode_status = 0;
+        }
+        if (gfg_id){
+            user.gfg_id = gfg_id;
+            user.gfg_status = 0;
+        }
+        if (codeforces_id){
+            user.codeforces_id = codeforces_id;
+            user.codeforces_status = 0;
+        }
+        if (codechef_id){
+            user.codechef_id = codechef_id;
+            user.codechef_status = 0;
+        }
+
+        await user.save();
+        return res.json({ message: 'Platform IDs updated successfully', success: "true" });
+    } catch (err) {
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+}
+
+const get_verify_requests = async (req, res) => {
+    try {
+        const user = req.userData;
+        if (!user) return res.status(400).json({ error: 'User not found' });
+
+        const data = {
+            name: user.name,
+            email: user.email,
+            leetcode_id: user.leetcode_id,
+            gfg_id: user.gfg_id,
+            codeforces_id: user.codeforces_id,
+            codechef_id: user.codechef_id,
+        };
+        
+        const requests = await new requestModel(data).save();
+        if (!requests) return res.status(400).json({ error: 'Failed to create request' });
+
+        return res.json({ data: requests, success: true });
+    } catch (err) {
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+}
+
+const get_all_requests = async (req, res) => {
+    try {
+        const requests = await requestModel.find({});
+        if (!requests) return res.status(400).json({ error: 'Failed to fetch requests' });
+
+        return res.json({ data: requests, success: true });
+    } catch (err) {
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+}
+
+module.exports = { register, login, logout, sendverifyOTP, verifyemail, isAuthenticated, sendResetOTP, resetPassword, verify_platforms_id, get_verify_requests, get_all_requests };
