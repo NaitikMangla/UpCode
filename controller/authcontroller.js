@@ -13,7 +13,7 @@ const register = async (req, res) => {
     }
 
     const allowedDomains = ['gmail.com', 'nitkkr.ac.in', 'icloud.com'];
-    const emailDomain = email.split('@')[1]; 
+    const emailDomain = email.split('@')[1];
     if (!allowedDomains.includes(emailDomain)) {
         return res.status(400).json({ error: 'Only Gmail and NIT Kurukshetra emails are allowed' });
     }
@@ -26,8 +26,8 @@ const register = async (req, res) => {
         const user = new usermodel({ name, email, password: hashedPassword });
         await user.save();
 
-        const token = jwt.sign({email}, process.env.JWT_SECRET);
-        res.cookie('token', token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite : 'lax'});
+        const token = jwt.sign({ email }, process.env.JWT_SECRET);
+        res.cookie('token', token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite: 'lax' });
 
         const welcomeMessage = {
             from: `"UpCode Support" <${process.env.EMAIL}>`,
@@ -123,13 +123,13 @@ const register = async (req, res) => {
                 </html>
             `,
         };
-        
+
 
         transporter.sendMail(welcomeMessage)
-        .then(()=>{console.log("Message sent!")})
-        .catch(()=>{console.log("Some error occured")});
+            .then(() => { console.log("Message sent!") })
+            .catch(() => { console.log("Some error occured") });
         console.log('Registered!')
-        return res.status(202).json({message : "successfull registration"});
+        return res.status(202).json({ message: "successfull registration" });
     } catch (err) {
         return res.status(500).json({ error: 'Internal server error' });
     }
@@ -147,7 +147,7 @@ const login = async (req, res) => {
         }
 
         const token = jwt.sign({ email }, process.env.JWT_SECRET);
-        res.cookie('token',token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite : 'lax' });
+        res.cookie('token', token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite: 'lax' });
 
         return res.json({ message: 'Login successful' });
     } catch (err) {
@@ -156,9 +156,9 @@ const login = async (req, res) => {
 };
 
 const logout = (req, res) => {
-    res.clearCookie('token',{path: '/'});
-    req.userData.isAccountVerified = true;
-    return res.json({ message: 'Logged out successfully' , success:"true"});
+    res.clearCookie('token', { path: '/' });
+    // req.userData.isAccountVerified = true;
+    return res.json({ message: 'Logged out successfully', success: "true" });
 };
 
 const sendverifyOTP = async (req, res) => {
@@ -175,7 +175,7 @@ const sendverifyOTP = async (req, res) => {
         await req.userData.save();
 
         // console.log('Generated OTP:', otp);
-        
+
         const verifyMessage = {
             from: `"UpCode Support" <${process.env.EMAIL}>`,
             to: req.userData.email,
@@ -233,7 +233,7 @@ const verifyemail = async (req, res) => {
         // const user = await usermodel.findById(req.userId);
         if (req.userData.isAccountVerified) return res.status(400).json({ error: 'Account already verified' });
 
-        if (Number(req.userData.verifyOTP) !== Number(otp)) return res.status(400).json({ error: 'Invalid OTP' , message :'verification failed'});
+        if (Number(req.userData.verifyOTP) !== Number(otp)) return res.status(400).json({ error: 'Invalid OTP', message: 'verification failed' });
 
         if (Date.now() > req.userData.verifyOTPExpireAt) return res.status(400).json({ error: 'OTP expired' });
 
@@ -242,34 +242,34 @@ const verifyemail = async (req, res) => {
         req.userData.isAccountVerified = true;
         await req.userData.save();
 
-        return res.status(200).json({ message: 'Account verified successfully' , success: "true"});
+        return res.status(200).json({ message: 'Account verified successfully', success: "true" });
     } catch (err) {
         return res.status(500).json({ error: 'Internal server error' });
     }
 };
 
 const isAuthenticated = async (req, res) => {
-    try{
+    try {
         // const {user} = req.body;
         // user.isAccountVerified = true;
-        return res.status(200).json({ success: true});
-    } catch(err){
-        return res.status(500).json({ error: 'Internal server error'});
+        return res.status(200).json({ success: true });
+    } catch (err) {
+        return res.status(500).json({ error: 'Internal server error' });
     }
 }
 
 const sendResetOTP = async (req, res) => {
-    const {email} = req.body;
-    if(!email) return res.status(400).json({error: 'Email is required'});
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email is required' });
 
-    try{
-        const user = await usermodel.findOne({email: email});
-        if(!user) return res.status(400).json({error: 'User not found'});
+    try {
+        const user = await usermodel.findOne({ email: email });
+        if (!user) return res.status(400).json({ error: 'User not found' });
         const otp = Math.floor(100000 + Math.random() * 900000);
         user.resetOTP = otp;
         user.resetOTPExpireAt = Date.now() + 600000; // 10 minutes
-        const token = jwt.sign({email}, process.env.JWT_SECRET);
-        res.cookie('token', token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite : 'lax'});
+        const token = jwt.sign({ email }, process.env.JWT_SECRET);
+        res.cookie('token', token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite: 'lax' });
         await user.save();
 
         const resetMessage = {
@@ -397,7 +397,7 @@ const sendResetOTP = async (req, res) => {
                 </html>
             `,
         };
-        
+
         await transporter.sendMail(resetMessage, (err, info) => {
             if (err) {
                 console.error("Email sending failed:", err); // 🛠️ Log full error
@@ -408,22 +408,22 @@ const sendResetOTP = async (req, res) => {
             }
         })
 
-        return res.json({message: 'Reset OTP sent successfully', success: "true"});
+        return res.json({ message: 'Reset OTP sent successfully', success: "true" });
 
-    } catch(err){
-        return res.status(500).json({error: 'Internal server error'});
+    } catch (err) {
+        return res.status(500).json({ error: 'Internal server error' });
     }
 }
 
 const resetPassword = async (req, res) => {
-    const {password} = req.body;
-    if(!password) return res.status(400).json({error: 'All fields are required'});
+    const { password } = req.body;
+    if (!password) return res.status(400).json({ error: 'All fields are required' });
     // const {email, otp, password} = req.body;
     // if(!email || !otp || !password) return res.status(400).json({error: 'All fields are required'});
 
-    try{
-        const user = await usermodel.findOne({email: req.userData.email});
-        if(!user) return res.status(400).json({error: 'User not found'});
+    try {
+        const user = await usermodel.findOne({ email: req.userData.email });
+        if (!user) return res.status(400).json({ error: 'User not found' });
         // if(Number(user.resetOTP) !== Number(otp)) return res.status(400).json({error: 'Invalid OTP'});
         // if(Date.now() > user.resetOTPExpireAt) return res.status(400).json({error: 'OTP expired'});
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -432,9 +432,9 @@ const resetPassword = async (req, res) => {
         user.resetOTPExpireAt = 0;
         await user.save();
 
-        return res.json({message: 'Password reset successfully', success: "true"});
-    } catch(err){
-        return res.status(500).json({error: 'Internal server error'});
+        return res.json({ message: 'Password reset successfully', success: "true" });
+    } catch (err) {
+        return res.status(500).json({ error: 'Internal server error' });
     }
 }
 
@@ -444,37 +444,34 @@ const verify_platforms_id = async (req, res) => {
 
     try {
         const user = req.userData;
+        user.leetcode_id = "";
+        user.gfg_id = "";
+        user.codeforces_id = "";
+        user.codechef_id = "";
+        // console.log("User Data:", user);
+        
         if (!user) return res.status(400).json({ error: 'User not found' });
 
-        if (leetcode_id){
+        if (leetcode_id) {
             user.leetcode_id = leetcode_id;
             user.leetcode_status = 0;
         }
-        if (gfg_id){
+        if (gfg_id) {
             user.gfg_id = gfg_id;
             user.gfg_status = 0;
         }
-        if (codeforces_id){
+        if (codeforces_id) {
             user.codeforces_id = codeforces_id;
             user.codeforces_status = 0;
         }
-        if (codechef_id){
+        if (codechef_id) {
             user.codechef_id = codechef_id;
             user.codechef_status = 0;
         }
 
         await user.save();
-        return res.json({ message: 'Platform IDs updated successfully', success: "true" });
-    } catch (err) {
-        return res.status(500).json({ error: 'Internal server error' });
-    }
-}
-
-const get_verify_requests = async (req, res) => {
-    try {
-        const user = req.userData;
-        if (!user) return res.status(400).json({ error: 'User not found' });
-
+        // console.log("User Data after saving:", user);
+        // console.log("User Data after saving:", user);
         const data = {
             name: user.name,
             email: user.email,
@@ -483,11 +480,11 @@ const get_verify_requests = async (req, res) => {
             codeforces_id: user.codeforces_id,
             codechef_id: user.codechef_id,
         };
-        
+
         const requests = await new requestModel(data).save();
         if (!requests) return res.status(400).json({ error: 'Failed to create request' });
 
-        return res.json({ data: requests, success: true });
+        return res.json({ data: requests, success: true, message: "Request sent successfully" });
     } catch (err) {
         return res.status(500).json({ error: 'Internal server error' });
     }
@@ -504,4 +501,4 @@ const get_all_requests = async (req, res) => {
     }
 }
 
-module.exports = { register, login, logout, sendverifyOTP, verifyemail, isAuthenticated, sendResetOTP, resetPassword, verify_platforms_id, get_verify_requests, get_all_requests };
+module.exports = { register, login, logout, sendverifyOTP, verifyemail, isAuthenticated, sendResetOTP, resetPassword, verify_platforms_id, get_all_requests };
