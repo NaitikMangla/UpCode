@@ -232,7 +232,7 @@ const verifyemail = async (req, res) => {
         // const user = await usermodel.findById(req.userId);
         if (req.userData.isAccountVerified) return res.status(400).json({ error: 'Account already verified' });
 
-        if (Number(req.userData.verifyOTP) !== Number(otp)) return res.status(400).json({ error: 'Invalid OTP' });
+        if (Number(req.userData.verifyOTP) !== Number(otp)) return res.status(400).json({ error: 'Invalid OTP' , message :'verification failed'});
 
         if (Date.now() > req.userData.verifyOTPExpireAt) return res.status(400).json({ error: 'OTP expired' });
 

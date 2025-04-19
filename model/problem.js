@@ -16,6 +16,14 @@ const problemSchema = new Schema({
         required : true,
         unique : true
     },
+    inputFormat : {
+        type : String,
+        required : true
+    },
+    outputFormat : {
+        type : String,
+        required : true
+    },
     sampleInput : {
         type : String,
         required : true
