@@ -4,11 +4,29 @@ const problemModel = require('../model/problem');
 
 async function getProblem(req, res){
     const problemId = req.params.id
+    if(!Number(problemId))
+    {
+        return res.json({error : "Invalid ID"})
+    }
     const problemData = await problemModel.findOne({id : problemId}, {_id : 0, hiddenTestCases : 0, solutions : 0})
-    console.log({problemId, problemData})
+    // console.log({problemId, problemData})
     if(!problemData)
     {
-        return res.json({error : "fail"})
+        return res.json({error : "Problem do not exist"})
+    }
+    return res.json(problemData)
+}
+
+async function getCompleteProblem(req, res){
+    const problemId = req.params.id  
+    if(!Number(problemId))
+    {
+        return res.json({error : "Invalid ID"})
+    }
+    const problemData = await problemModel.findOne({id : problemId}, {_id : 0})
+    if(!problemData)
+    {
+        return res.json({error : "Problem do not exist"})
     }
     return res.json(problemData)
 }
@@ -19,25 +37,28 @@ async function getAllProblem(req, res){
     {
         return res.json({error : "fail"})
     }
+    // console.log(problemData)
     return res.json(problemData)
 }
 
 function stringToArray(str, regex)
 {
     let array = str.split(regex)
-    // console.log(array)
     array = array.map((item) => item?.trim()).filter((item) => item !== "" && item !== undefined && item !== null);
     return array
 }
 
 async function addProblem(req, res, next){
     const data = req.body
+    if(!Number(data.id))
+    {
+        return res.json({error : "Invalid ID"})
+    }
     // console.log(data)
-
     // Check for empty fields --> Not accepted
     for (const key in data) {
         if (Object.prototype.hasOwnProperty.call(data, key)) {
-            if(key != 'timeLimit' && key != 'memoryLimit' && (data[key] == "" || data[key] == undefined || data[key] == null))
+            if(key != 'timeLimit' && key != 'memoryLimit' && (data[key] == "" || !data[key]))
             {
                 return res.json({error : `${key} is required`})
             }
@@ -52,7 +73,7 @@ async function addProblem(req, res, next){
         ]
     });
 
-    if(problemExists) 
+    if(problemExists)
     {
         return res.json({error : 'ID or title already exists'})
     }
@@ -68,12 +89,70 @@ async function addProblem(req, res, next){
         if(!keys.includes(key))
         {
             data[key] = data[key].trim()
-        }
+        } 
     }
 
     // Create Doc and save to DB
     await problemModel.create(data)
     return res.status(202).json({message : "Problem added successfully"})
+}
+
+async function updateProblem(req, res, next){
+    const data = req.body
+    // console.log(data)
+    if(!Number(data.id))
+    {
+        return res.json({error : "Invalid ID"})
+    }
+
+    for (const key in data) {
+        if (Object.prototype.hasOwnProperty.call(data, key)) {
+            if(key != 'timeLimit' && key != 'memoryLimit' && key != '__v' && (data[key] == "" || !data[key]))
+            {
+                return res.json({error : `${key} is required`})
+            }
+        }
+    }
+
+    const keys = ["topics","hiddenTestCases", "solutions","timeLimit", "memoryLimit", "__v"]
+    if(!Array.isArray(data.hiddenTestCases)) data.hiddenTestCases = stringToArray(data.hiddenTestCases, /(\n{2,})|((\r\n){2,})/)
+    if(!Array.isArray(data.solutions)) data.solutions = stringToArray(data.solutions, /(\n{2,})|((\r\n){2,})/)
+    if(!Array.isArray(data.topics)) data.topics = stringToArray(data.topics, /,/)
+    if(data.timeLimit) data.timeLimit = Number(data.timeLimit)
+    if(data.memoryLimit) data.memoryLimit = Number(data.memoryLimit)
+
+    for (const key in data) {
+        if(!keys.includes(key))
+        {
+            data[key] = data[key].trim()
+        }
+    }
+
+    try
+    {
+        await problemModel.updateOne({id : data.id}, data)
+        return res.json({message : "Problem updated successfully"})
+    }
+    catch(error){
+        console.log(error.message)
+        return res.json({error : "Some error occurred in updating problem"})
+    }
+}
+
+async function deleteProblems(req, res, next){
+    const ids = req.body.ids
+    if(!ids || ids.length == 0)
+    {
+        return res.json({error : "No IDs provided"})
+    }
+    try{
+        await problemModel.deleteMany({id : {$in : ids}})
+        return res.status(202).json({message : "Problems deleted successfully", success : true})
+    }
+    catch(err){
+        console.log(err.message)
+        return res.json({error : err.message})
+    }
 }
 
 async function handleRun(data, socket) {
@@ -146,7 +225,7 @@ function normalizeResult(str){
 }
 
 function judgeSolution(output, expectedOutput) {
-    console.log({output, expectedOutput})
+    // console.log({output, expectedOutput})
     return normalizeResult(output) === normalizeResult(expectedOutput)
 }
 
@@ -221,5 +300,8 @@ module.exports = {
     handleSubmitResult,
     getProblem,
     getAllProblem,
-    addProblem
+    addProblem,
+    deleteProblems,
+    getCompleteProblem,
+    updateProblem
 }
