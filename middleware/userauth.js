@@ -3,24 +3,24 @@ const usermodel = require('../model/usermodel');
 
 const userAuth = async (req, res, next) => {
     try {
-        const token = req.cookies.token || req.header("Authorization")?.replace("Bearer ", "");        // console.log({token})
+        const token = req.cookies.token || req.header("Authorization")?.replace("Bearer ", "");
+
         if (!token) {
-            return res.status(401).json({ error: 'Unauthorized: No token provided(mw)'});
+            return res.status(401).json({ error: 'Unauthorized: No auth-token provided(mw)'});
         }
+
         const payload = jwt.verify(token, process.env.JWT_SECRET);
-        // console.log(payload)
         const user = await usermodel.findOne({email : payload.email});
-        // console.log(user)
+
         if (!user) {
             return res.status(401).json({ error: 'Unauthorized: User not found(mw)'});
         }
+        
         req.userData = user
-        // console.log('reqUserData' , req.userData)
-        // req.userId = payload.userId
         next();
     } catch (err) {
-        console.error("JWT Authentication Error:", err.message);
-        return res.status(401).json({ error: 'Unauthorized: Invalid or Expired Token' });
+        console.log("JWT Authentication Error:", err.message);
+        return res.status(401).json({ error: 'Unauthorized: Invalid or Expired Token(mw)' });
     }
 };
 

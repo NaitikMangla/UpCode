@@ -5,7 +5,6 @@ const transporter = require('../services/mailservice');
 
 const register = async (req, res) => {
     const { name, email, password } = req.body;
-    // console.log({name, email, password})
 
     if (!name || !email || !password) {
         return res.status(400).json({ error: 'All fields are required' });
@@ -249,8 +248,6 @@ const verifyemail = async (req, res) => {
 
 const isAuthenticated = async (req, res) => {
     try{
-        // const {user} = req.body;
-        // user.isAccountVerified = true;
         return res.status(200).json({ success: true});
     } catch(err){
         return res.status(500).json({ error: 'Internal server error'});

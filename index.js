@@ -33,13 +33,13 @@ app.set('views', path.join(__dirname, 'views'))
 //     console.error("MongoDB Connection Failed:", err);
 // });
 
-
+// local database connection
 const {connectLocalDB} = require('./LocalDB_Connection/connect')
 connectLocalDB()
 
 //middlewares
 app.use(cors({
-    origin: "http://localhost:5173",  // Allow frontend
+    origin: process.env.FRONTEND_URL,  // Allow frontend
     credentials: true,  // Allow cookies if needed
     methods: ["GET", "POST"],  // Allowed methods
     allowedHeaders: ["Content-Type", "Authorization"]  // Allowed headers
@@ -50,7 +50,7 @@ app.use(express.urlencoded({ extended: true }));
 
 //route handlers
 app.get('/', (req, res)=>{res.send('Welcome to UpCode Backend')})
-app.use('/problem', playRouter)
+app.use('/problem', playRouter) 
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 
