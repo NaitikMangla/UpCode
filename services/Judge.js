@@ -35,6 +35,7 @@ class Judge{
         this.#counter++
         if(this.#counter >= this.#hiddenTestCases.length)
         {
+            
             this.end("accepted")
             return;
         }
@@ -46,7 +47,10 @@ class Judge{
             timeLimit : this.#timeLimit,
             memoryLimit : this.#memoryLimit,
         }
+
         handleSubmit(data ,this.#socket, this.#counter)
+
+
     }
 
     end(verdict){
