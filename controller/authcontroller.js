@@ -2,7 +2,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const usermodel = require('../model/usermodel');
 const transporter = require('../services/mailservice');
-const requestModel = require('../model/requests');
+const axios = require('axios');
+const userAuth = require('../middleware/userauth');
 
 const register = async (req, res) => {
     const { name, email, password } = req.body;
@@ -449,7 +450,7 @@ const verify_platforms_id = async (req, res) => {
         user.codeforces_id = "";
         user.codechef_id = "";
         // console.log("User Data:", user);
-        
+
         if (!user) return res.status(400).json({ error: 'User not found' });
 
         if (leetcode_id) {
@@ -501,4 +502,139 @@ const get_all_requests = async (req, res) => {
     }
 }
 
-module.exports = { register, login, logout, sendverifyOTP, verifyemail, isAuthenticated, sendResetOTP, resetPassword, verify_platforms_id, get_all_requests };
+const verify_LC = async (req, res) => {
+    const { id, token } = req.body;
+
+    if (!id || typeof id !== "string") {
+        return res.status(400).json({ success: false, message: "Invalid username" });
+    }
+
+    console.log(`Verifying LeetCode user: ${id} with token: ${token}`);
+
+    setTimeout(async () => {
+        try {
+            const query = {
+                query: `
+          query userPublicProfile($id: String!) {
+            matchedUser(username: $id) {
+              profile {
+                realName
+              }
+            }
+          }
+        `,
+                variables: { id }
+            };
+
+            const headers = {
+                "Content-Type": "application/json",
+                "Referer": `https://leetcode.com/u/${id}/`
+            };
+
+            const response = await axios.post("https://leetcode.com/graphql/", query, { headers });
+
+            const realName = response.data?.data?.matchedUser?.profile?.realName || "";
+
+            if (realName === token) {
+                req.userData.isleetcodeVerified = true;
+                req.userData.leetcode_status = 1;
+                req.userData.leetcode_id = id;
+                return res.status(200).json({ success: true, message: "User verified successfully" });
+            } else {
+                console.log(`Not Verified: Expected ${token}, got ${realName}`);
+            }
+        } catch (error) {
+            console.error("Error verifying LeetCode user:", error.response?.data || error.message);
+        }
+    }, 90000);
+};
+
+
+const verify_CF = async (req, res) => {
+    const { id, token } = req.body;
+
+    if (!id || typeof id !== "string") {
+        return res.status(400).json({ success: false, message: "Invalid username" });
+    }
+
+    console.log(`Verifying Codeforces user: ${id} with token: ${token}`);
+
+    setTimeout(async () => {
+        try {
+            const response = await axios.get(`https://codeforces.com/api/user.info?handles=${id}`);
+            const userData = response.data.result[0];
+
+            if (userData && userData.lastName === token) {
+                req.userData.iscodeforcesVerified = true;
+                req.userData.codeforces_status = 1;
+                req.userData.codeforces_id = id;
+                return res.status(200).json({ success: true, message: "User verified successfully" });
+            } else {
+                console.log(`Not Verified: Expected ${token}, got ${userData?.firstName}`);
+            }
+        } catch (error) {
+            console.error("Error verifying Codeforces user:", error.response?.data || error.message);
+        }
+    }, 90000);
+};
+
+const verify_CC = async (req, res) => {
+    const { id, token } = req.body;
+
+    if (!id || typeof id !== "string") {
+        return res.status(400).json({ success: false, message: "Invalid username" });
+    }
+
+    console.log(`Verifying CodeChef user: ${id} with token: ${token}`);
+
+    setTimeout(async () => {
+        try {
+            const response = await axios.get(`https://codechef-api.vercel.app/handle/${id}`);
+            const name = response.data.name;
+
+            if (name && name.toLowerCase() === token.toLowerCase()) {
+                req.userData.iscodechefVerified = true;
+                req.userData.codechef_status = 1;
+                req.userData.codechef_id = id;
+                return res.status(200).json({ success: true, message: "User verified successfully" });
+            } else {
+                console.log(`Not Verified: Expected ${token}, got ${name}`);
+            }
+        } catch (error) {
+            console.error("Error fetching data:", error.message);
+        }
+
+    }, 90000);
+};
+
+
+const verify_GFG = async (req, res) => {
+    const { id, token } = req.body;
+
+    if (!id || typeof id !== "string") {
+        return res.status(400).json({ success: false, message: "Invalid username" });
+    }
+
+    console.log(`Verifying GFG user: ${id} with token: ${token}`);
+
+    setTimeout(async () => {
+        try {
+            const url = `https://authapi.geeksforgeeks.org/api-get/user-profile-info/?handle={user}&article_count=false&redirect=true`;
+            const response = await axios.get(url.replace("{user}", id));
+            const userData = response.data;
+
+            if (userData.data.name === token) {
+                req.userData.isgfgVerified = true;
+                req.userData.gfg_status = 1;
+                req.userData.gfg_id = id;
+                return res.status(200).json({ success: true, message: "User verified successfully" });
+            } else {
+                console.log(`Not Verified: Expected ${token}, got ${userData?.name}`);
+                return res.status(400).json({ success: false, message: "User verification failed" });
+            }
+        } catch (error) {
+            console.error("Error verifying GFG user:", error.response?.data || error.message);
+        }
+    }, 90000);
+}
+module.exports = { register, login, logout, sendverifyOTP, verifyemail, isAuthenticated, sendResetOTP, resetPassword, verify_platforms_id, get_all_requests, verify_LC, verify_CF, verify_CC, verify_GFG };
