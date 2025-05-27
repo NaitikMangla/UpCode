@@ -23,7 +23,7 @@ initializeSocket(server)
 app.set('view engine', 'ejs')
 app.set('views', path.join(__dirname, 'views'))
 
-// database connection
+// // database connection
 // const connectDB = require('./DB/db');
 // connectDB().then(() => {
 //     // app.listen(port, () => {

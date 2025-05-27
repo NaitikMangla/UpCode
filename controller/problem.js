@@ -266,6 +266,7 @@ async function handleRunResult(req, res, next) {
         timeUtilized: Number(data.time), // in seconds
         memoryUtilized: Number(data.memory) // in kb
     }
+    console.log(data)
     let socket = get(data.token)
     socket.emit('runResult', result)
     remove(data.token)
