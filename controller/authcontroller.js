@@ -2,6 +2,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const usermodel = require('../model/usermodel');
 const transporter = require('../services/mailservice');
+const axios = require('axios');
+const userAuth = require('../middleware/userauth');
 
 const register = async (req, res) => {
     const { name, email, password } = req.body;
@@ -11,7 +13,7 @@ const register = async (req, res) => {
     }
 
     const allowedDomains = ['gmail.com', 'nitkkr.ac.in', 'icloud.com'];
-    const emailDomain = email.split('@')[1]; 
+    const emailDomain = email.split('@')[1];
     if (!allowedDomains.includes(emailDomain)) {
         return res.status(400).json({ error: 'Only Gmail and NIT Kurukshetra emails are allowed' });
     }
@@ -24,8 +26,8 @@ const register = async (req, res) => {
         const user = new usermodel({ name, email, password: hashedPassword });
         await user.save();
 
-        const token = jwt.sign({email}, process.env.JWT_SECRET);
-        res.cookie('token', token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite : 'lax'});
+        const token = jwt.sign({ email }, process.env.JWT_SECRET);
+        res.cookie('token', token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite: 'lax' });
 
         const welcomeMessage = {
             from: `"UpCode Support" <${process.env.EMAIL}>`,
@@ -121,13 +123,13 @@ const register = async (req, res) => {
                 </html>
             `,
         };
-        
+
 
         transporter.sendMail(welcomeMessage)
-        .then(()=>{console.log("Message sent!")})
-        .catch(()=>{console.log("Some error occured")});
+            .then(() => { console.log("Message sent!") })
+            .catch(() => { console.log("Some error occured") });
         console.log('Registered!')
-        return res.status(202).json({message : "successfull registration"});
+        return res.status(202).json({ message: "successfull registration" });
     } catch (err) {
         return res.status(500).json({ error: 'Internal server error' });
     }
@@ -145,7 +147,7 @@ const login = async (req, res) => {
         }
 
         const token = jwt.sign({ email }, process.env.JWT_SECRET);
-        res.cookie('token',token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite : 'lax' });
+        res.cookie('token', token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite: 'lax' });
 
         return res.json({ message: 'Login successful' });
     } catch (err) {
@@ -154,9 +156,9 @@ const login = async (req, res) => {
 };
 
 const logout = (req, res) => {
-    res.clearCookie('token',{path: '/'});
-
-    return res.json({ message: 'Logged out successfully' , success:"true"});
+    res.clearCookie('token', { path: '/' });
+    // req.userData.isAccountVerified = true;
+    return res.json({ message: 'Logged out successfully', success: "true" });
 };
 
 const sendverifyOTP = async (req, res) => {
@@ -165,7 +167,7 @@ const sendverifyOTP = async (req, res) => {
 
         // console.log('User:', user);
 
-        // if (req.userData.isAccountVerified) return res.status(400).json({ error: 'Account already verified' });
+        if (req.userData.isAccountVerified) return res.status(200).json({ message: 'Account already verified' });
 
         const otp = Math.floor(100000 + Math.random() * 900000);
         req.userData.verifyOTP = otp;
@@ -173,7 +175,7 @@ const sendverifyOTP = async (req, res) => {
         await req.userData.save();
 
         // console.log('Generated OTP:', otp);
-        
+
         const verifyMessage = {
             from: `"UpCode Support" <${process.env.EMAIL}>`,
             to: req.userData.email,
@@ -231,7 +233,7 @@ const verifyemail = async (req, res) => {
         // const user = await usermodel.findById(req.userId);
         if (req.userData.isAccountVerified) return res.status(400).json({ error: 'Account already verified' });
 
-        if (Number(req.userData.verifyOTP) !== Number(otp)) return res.status(400).json({ error: 'Invalid OTP' , message :'verification failed'});
+        if (Number(req.userData.verifyOTP) !== Number(otp)) return res.status(400).json({ error: 'Invalid OTP', message: 'verification failed' });
 
         if (Date.now() > req.userData.verifyOTPExpireAt) return res.status(400).json({ error: 'OTP expired' });
 
@@ -240,7 +242,7 @@ const verifyemail = async (req, res) => {
         req.userData.isAccountVerified = true;
         await req.userData.save();
 
-        return res.status(200).json({ message: 'Account verified successfully' , success: "true"});
+        return res.status(200).json({ message: 'Account verified successfully', success: "true" });
     } catch (err) {
         return res.status(500).json({ error: 'Internal server error' });
     }
@@ -255,17 +257,17 @@ const isAuthenticated = async (req, res) => {
 }
 
 const sendResetOTP = async (req, res) => {
-    const {email} = req.body;
-    if(!email) return res.status(400).json({error: 'Email is required'});
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email is required' });
 
-    try{
-        const user = await usermodel.findOne({email: email});
-        if(!user) return res.status(400).json({error: 'User not found'});
+    try {
+        const user = await usermodel.findOne({ email: email });
+        if (!user) return res.status(400).json({ error: 'User not found' });
         const otp = Math.floor(100000 + Math.random() * 900000);
         user.resetOTP = otp;
         user.resetOTPExpireAt = Date.now() + 600000; // 10 minutes
-        const token = jwt.sign({email}, process.env.JWT_SECRET);
-        res.cookie('token', token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite : 'lax'});
+        const token = jwt.sign({ email }, process.env.JWT_SECRET);
+        res.cookie('token', token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite: 'lax' });
         await user.save();
 
         const resetMessage = {
@@ -393,7 +395,7 @@ const sendResetOTP = async (req, res) => {
                 </html>
             `,
         };
-        
+
         await transporter.sendMail(resetMessage, (err, info) => {
             if (err) {
                 console.error("Email sending failed:", err); // 🛠️ Log full error
@@ -404,22 +406,22 @@ const sendResetOTP = async (req, res) => {
             }
         })
 
-        return res.json({message: 'Reset OTP sent successfully', success: "true"});
+        return res.json({ message: 'Reset OTP sent successfully', success: "true" });
 
-    } catch(err){
-        return res.status(500).json({error: 'Internal server error'});
+    } catch (err) {
+        return res.status(500).json({ error: 'Internal server error' });
     }
 }
 
 const resetPassword = async (req, res) => {
-    const {password} = req.body;
-    if(!password) return res.status(400).json({error: 'All fields are required'});
+    const { password } = req.body;
+    if (!password) return res.status(400).json({ error: 'All fields are required' });
     // const {email, otp, password} = req.body;
     // if(!email || !otp || !password) return res.status(400).json({error: 'All fields are required'});
 
-    try{
-        const user = await usermodel.findOne({email: req.userData.email});
-        if(!user) return res.status(400).json({error: 'User not found'});
+    try {
+        const user = await usermodel.findOne({ email: req.userData.email });
+        if (!user) return res.status(400).json({ error: 'User not found' });
         // if(Number(user.resetOTP) !== Number(otp)) return res.status(400).json({error: 'Invalid OTP'});
         // if(Date.now() > user.resetOTPExpireAt) return res.status(400).json({error: 'OTP expired'});
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -428,10 +430,208 @@ const resetPassword = async (req, res) => {
         user.resetOTPExpireAt = 0;
         await user.save();
 
-        return res.json({message: 'Password reset successfully', success: "true"});
-    } catch(err){
-        return res.status(500).json({error: 'Internal server error'});
+        return res.json({ message: 'Password reset successfully', success: "true" });
+    } catch (err) {
+        return res.status(500).json({ error: 'Internal server error' });
     }
 }
 
-module.exports = { register, login, logout, sendverifyOTP, verifyemail, isAuthenticated, sendResetOTP, resetPassword };
+const verify_platforms_id = async (req, res) => {
+    const { leetcode_id, gfg_id, codeforces_id, codechef_id } = req.body;
+    if (!leetcode_id && !gfg_id && !codeforces_id && !codechef_id) return res.status(400).json({ error: 'At least one platform ID is required' });
+
+    try {
+        const user = req.userData;
+        user.leetcode_id = "";
+        user.gfg_id = "";
+        user.codeforces_id = "";
+        user.codechef_id = "";
+        // console.log("User Data:", user);
+
+        if (!user) return res.status(400).json({ error: 'User not found' });
+
+        if (leetcode_id) {
+            user.leetcode_id = leetcode_id;
+            user.leetcode_status = 0;
+        }
+        if (gfg_id) {
+            user.gfg_id = gfg_id;
+            user.gfg_status = 0;
+        }
+        if (codeforces_id) {
+            user.codeforces_id = codeforces_id;
+            user.codeforces_status = 0;
+        }
+        if (codechef_id) {
+            user.codechef_id = codechef_id;
+            user.codechef_status = 0;
+        }
+
+        await user.save();
+        // console.log("User Data after saving:", user);
+        // console.log("User Data after saving:", user);
+        const data = {
+            name: user.name,
+            email: user.email,
+            leetcode_id: user.leetcode_id,
+            gfg_id: user.gfg_id,
+            codeforces_id: user.codeforces_id,
+            codechef_id: user.codechef_id,
+        };
+
+        const requests = await new requestModel(data).save();
+        if (!requests) return res.status(400).json({ error: 'Failed to create request' });
+
+        return res.json({ data: requests, success: true, message: "Request sent successfully" });
+    } catch (err) {
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+}
+
+const get_all_requests = async (req, res) => {
+    try {
+        const requests = await requestModel.find({});
+        if (!requests) return res.status(400).json({ error: 'Failed to fetch requests' });
+
+        return res.json({ data: requests, success: true });
+    } catch (err) {
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+}
+
+const verify_LC = async (req, res) => {
+    const { id, token } = req.body;
+
+    if (!id || typeof id !== "string") {
+        return res.status(400).json({ success: false, message: "Invalid username" });
+    }
+
+    console.log(`Verifying LeetCode user: ${id} with token: ${token}`);
+
+    setTimeout(async () => {
+        try {
+            const query = {
+                query: `
+          query userPublicProfile($id: String!) {
+            matchedUser(username: $id) {
+              profile {
+                realName
+              }
+            }
+          }
+        `,
+                variables: { id }
+            };
+
+            const headers = {
+                "Content-Type": "application/json",
+                "Referer": `https://leetcode.com/u/${id}/`
+            };
+
+            const response = await axios.post("https://leetcode.com/graphql/", query, { headers });
+
+            const realName = response.data?.data?.matchedUser?.profile?.realName || "";
+
+            if (realName === token) {
+                req.userData.isleetcodeVerified = true;
+                req.userData.leetcode_status = 1;
+                req.userData.leetcode_id = id;
+                return res.status(200).json({ success: true, message: "User verified successfully" });
+            } else {
+                console.log(`Not Verified: Expected ${token}, got ${realName}`);
+            }
+        } catch (error) {
+            console.error("Error verifying LeetCode user:", error.response?.data || error.message);
+        }
+    }, 90000);
+};
+
+
+const verify_CF = async (req, res) => {
+    const { id, token } = req.body;
+
+    if (!id || typeof id !== "string") {
+        return res.status(400).json({ success: false, message: "Invalid username" });
+    }
+
+    console.log(`Verifying Codeforces user: ${id} with token: ${token}`);
+
+    setTimeout(async () => {
+        try {
+            const response = await axios.get(`https://codeforces.com/api/user.info?handles=${id}`);
+            const userData = response.data.result[0];
+
+            if (userData && userData.lastName === token) {
+                req.userData.iscodeforcesVerified = true;
+                req.userData.codeforces_status = 1;
+                req.userData.codeforces_id = id;
+                return res.status(200).json({ success: true, message: "User verified successfully" });
+            } else {
+                console.log(`Not Verified: Expected ${token}, got ${userData?.firstName}`);
+            }
+        } catch (error) {
+            console.error("Error verifying Codeforces user:", error.response?.data || error.message);
+        }
+    }, 90000);
+};
+
+const verify_CC = async (req, res) => {
+    const { id, token } = req.body;
+
+    if (!id || typeof id !== "string") {
+        return res.status(400).json({ success: false, message: "Invalid username" });
+    }
+
+    console.log(`Verifying CodeChef user: ${id} with token: ${token}`);
+
+    setTimeout(async () => {
+        try {
+            const response = await axios.get(`https://codechef-api.vercel.app/handle/${id}`);
+            const name = response.data.name;
+
+            if (name && name.toLowerCase() === token.toLowerCase()) {
+                req.userData.iscodechefVerified = true;
+                req.userData.codechef_status = 1;
+                req.userData.codechef_id = id;
+                return res.status(200).json({ success: true, message: "User verified successfully" });
+            } else {
+                console.log(`Not Verified: Expected ${token}, got ${name}`);
+            }
+        } catch (error) {
+            console.error("Error fetching data:", error.message);
+        }
+
+    }, 90000);
+};
+
+
+const verify_GFG = async (req, res) => {
+    const { id, token } = req.body;
+
+    if (!id || typeof id !== "string") {
+        return res.status(400).json({ success: false, message: "Invalid username" });
+    }
+
+    console.log(`Verifying GFG user: ${id} with token: ${token}`);
+
+    setTimeout(async () => {
+        try {
+            const url = `https://authapi.geeksforgeeks.org/api-get/user-profile-info/?handle={user}&article_count=false&redirect=true`;
+            const response = await axios.get(url.replace("{user}", id));
+            const userData = response.data;
+
+            if (userData.data.name === token) {
+                req.userData.isgfgVerified = true;
+                req.userData.gfg_status = 1;
+                req.userData.gfg_id = id;
+                return res.status(200).json({ success: true, message: "User verified successfully" });
+            } else {
+                console.log(`Not Verified: Expected ${token}, got ${userData?.name}`);
+                return res.status(400).json({ success: false, message: "User verification failed" });
+            }
+        } catch (error) {
+            console.error("Error verifying GFG user:", error.response?.data || error.message);
+        }
+    }, 90000);
+}
+module.exports = { register, login, logout, sendverifyOTP, verifyemail, isAuthenticated, sendResetOTP, resetPassword, verify_platforms_id, get_all_requests, verify_LC, verify_CF, verify_CC, verify_GFG };
