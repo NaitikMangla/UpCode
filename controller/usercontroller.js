@@ -9,6 +9,15 @@ const getUserData = async (req, res) => {
                 name: user.name,
                 email: user.email,
                 isAccountVerified: user.isAccountVerified,
+                isAdmin : user.isAdmin,
+                leetcode_id : user.leetcode_id,
+                gfg_id : user.gfg_id,
+                codeforces_id : user.codeforces_id,
+                codechef_id : user.codechef_id,
+                isleetcodeVerified : user.isleetcodeVerified,
+                isgfgVerified : user.isgfgVerified,
+                iscodeforcesVerified : user.iscodeforcesVerified,
+                iscodechefVerified : user.iscodechefVerified
             }
         });
 

@@ -26,7 +26,7 @@ const register = async (req, res) => {
         const user = new usermodel({ name, email, password: hashedPassword });
         await user.save();
 
-        const token = jwt.sign({ email }, process.env.JWT_SECRET);
+        const token = jwt.sign({ email, isAdmin : user.isAdmin }, process.env.JWT_SECRET);
         res.cookie('token', token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite: 'lax' });
 
         const welcomeMessage = {
@@ -146,7 +146,7 @@ const login = async (req, res) => {
             return res.status(400).json({ error: 'Invalid credentials' });
         }
 
-        const token = jwt.sign({ email }, process.env.JWT_SECRET);
+        const token = jwt.sign({ email, isAdmin : user.isAdmin }, process.env.JWT_SECRET);
         res.cookie('token', token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite: 'lax' });
 
         return res.json({ message: 'Login successful' });
