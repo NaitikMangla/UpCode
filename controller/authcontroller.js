@@ -571,6 +571,7 @@ const verify_CF = async (req, res) => {
                 return res.status(200).json({ success: true, message: "User verified successfully" });
             } else {
                 console.log(`Not Verified: Expected ${token}, got ${userData?.firstName}`);
+                return res.status(400).join({success: false , message: "Not Verified"});
             }
         } catch (error) {
             console.error("Error verifying Codeforces user:", error.response?.data || error.message);
@@ -600,6 +601,7 @@ const verify_CC = async (req, res) => {
                 return res.status(200).json({ success: true, message: "User verified successfully" });
             } else {
                 console.log(`Not Verified: Expected ${token}, got ${name}`);
+                return res.status(400).join({success: false , message: "Not Verified"});
             }
         } catch (error) {
             console.error("Error fetching data:", error.message);
