@@ -13,6 +13,7 @@ const {initializeSocket} = require('./services/socket')
 const playRouter = require('./router/problem')
 const authRoutes = require('./router/authroutes');
 const userRoutes = require('./router/userroutes');
+const statRouter = require('./router/stats')
 
 //server initialisation
 const app = express()
@@ -53,6 +54,7 @@ app.get('/', (req, res)=>{res.send('Welcome to UpCode Backend')})
 app.use('/problem', playRouter) 
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
+app.use('/stats', statRouter)
 
 // start server
 const port = process.env.PORT || 3000
