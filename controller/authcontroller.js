@@ -536,9 +536,11 @@ const verify_LC = async (req, res) => {
                 req.userData.isleetcodeVerified = true;
                 req.userData.leetcode_status = 1;
                 req.userData.leetcode_id = id;
+                req.userData.save();
                 return res.status(200).json({ success: true, message: "User verified successfully" });
             } else {
                 console.log(`Not Verified: Expected ${token}, got ${realName}`);
+                return res.status(400).join({success: false , message: "Not Verified"});
             }
         } catch (error) {
             console.error("Error verifying LeetCode user:", error.response?.data || error.message);
@@ -565,9 +567,11 @@ const verify_CF = async (req, res) => {
                 req.userData.iscodeforcesVerified = true;
                 req.userData.codeforces_status = 1;
                 req.userData.codeforces_id = id;
+                req.userData.save();
                 return res.status(200).json({ success: true, message: "User verified successfully" });
             } else {
                 console.log(`Not Verified: Expected ${token}, got ${userData?.firstName}`);
+                return res.status(400).join({success: false , message: "Not Verified"});
             }
         } catch (error) {
             console.error("Error verifying Codeforces user:", error.response?.data || error.message);
@@ -593,9 +597,11 @@ const verify_CC = async (req, res) => {
                 req.userData.iscodechefVerified = true;
                 req.userData.codechef_status = 1;
                 req.userData.codechef_id = id;
+                req.userData.save();
                 return res.status(200).json({ success: true, message: "User verified successfully" });
             } else {
                 console.log(`Not Verified: Expected ${token}, got ${name}`);
+                return res.status(400).join({success: false , message: "Not Verified"});
             }
         } catch (error) {
             console.error("Error fetching data:", error.message);
@@ -624,6 +630,7 @@ const verify_GFG = async (req, res) => {
                 req.userData.isgfgVerified = true;
                 req.userData.gfg_status = 1;
                 req.userData.gfg_id = id;
+                req.userData.save();
                 return res.status(200).json({ success: true, message: "User verified successfully" });
             } else {
                 console.log(`Not Verified: Expected ${token}, got ${userData?.name}`);
