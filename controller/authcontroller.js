@@ -625,7 +625,7 @@ const verify_GFG = async (req, res) => {
             const url = `https://authapi.geeksforgeeks.org/api-get/user-profile-info/?handle={user}&article_count=false&redirect=true`;
             const response = await axios.get(url.replace("{user}", id));
             const userData = response.data;
-
+            
             if (userData.data.name === token) {
                 req.userData.isgfgVerified = true;
                 req.userData.gfg_status = 1;

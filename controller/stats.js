@@ -1,10 +1,16 @@
-const { usermodel } = require('../model/usermodel');
 const fetch = require('node-fetch');
+
 
 async function getLeetcodeStats(req, res, next) {
     try {
         const userData = req.userData;
         const leetcodeUsername = userData.leetcode_id;
+        const verified = userData.isleetcodeVerified
+        
+        if(!leetcodeUsername || !verified)
+        {
+          return res.status(400).json({error : "null or unverified credentials"})
+        }
 
         const [contestRatings, difficultyStats, topicStats] = await Promise.all([ 
             fetchContestRatingslc(leetcodeUsername),
@@ -17,27 +23,28 @@ async function getLeetcodeStats(req, res, next) {
             difficultyStats,
             topicStats
         });
+
     } catch (err) {
-        next(err);
+      console.log(err.message);
+      return res.status(500).json({error : "Server Internal Error"})
     }
 }
 
 async function getGFGStats(req, res, next) {
   const username = req.userData?.gfg_id;
-  if (!username) return res.status(400).json({ error: 'GFG username not found' });
+  const verified = req.userData?.isgfgVerified
+  if (!username || !verified) return res.status(400).json({ error: 'null or unverified credentials' });
 
   try {
-    const [ratingHistory, solvedByDifficulty, solvedByTopic] = await Promise.all([
-      getContestHistory(username),
-      getSolvedByDifficulty(username),
-      getSolvedByTopic(username)
+    const [solvedByDifficulty, ratingHistory] = await Promise.all([
+      getSolvedByDifficultygfg(username),
+      getContestHistorygfg(username),
     ]);
 
     return res.status(200).json({
       username,
       ratingHistory,
       solvedByDifficulty,
-      solvedByTopic
     });
   } catch (error) {
     console.error('GFG Stats Fetch Error:', error.message);
@@ -51,7 +58,11 @@ async function getGFGStats(req, res, next) {
 
 async function getCodeforcesStats(req, res, next) {
   try {
-    const { codeforces_id } = req.userData;
+    const { codeforces_id , iscodeforcesVerified } = req.userData;
+    if(!codeforces_id || !iscodeforcesVerified)
+    {
+      return res.status(400).json({ error: 'null or unverified credentials' });
+    }
 
     // Fetch Contest History
     const contestRes = await fetch(`https://codeforces.com/api/user.rating?handle=${codeforces_id}`);
@@ -110,13 +121,13 @@ async function getCodeforcesStats(req, res, next) {
 async function getCodechefStats(req, res, next) {
   try {
     const username = req.userData?.codechef_id;
-    if (!username) {
+    const verified = req.userData?.iscodechefVerified;
+    if (!username || !verified) {
       return res.status(400).json({ error: "CodeChef ID not provided" });
     }
 
     const response = await fetch(`https://codechef-api.vercel.app/handle/${username}`);
     const data = await response.json();
-    console.log(data);
 
     if (!data || data.status !== 200) {
       return res.status(404).json({ error: "CodeChef user not found or API error" });
@@ -186,19 +197,25 @@ async function fetchContestRatingslc(username) {
     }
     `;
 
-    const response = await fetch('https://leetcode.com/graphql', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, variables: { username } })
-    });
+    try{
+        const response = await fetch('https://leetcode.com/graphql', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query, variables: { username } })
+      });
 
-    const data = await response.json();
-    const allContests = data.data.userContestRankingHistory || [];
+      const data = await response.json();
+      const allContests = data.data.userContestRankingHistory || [];
 
-    // 🔍 Filter only attended contests
-    const attendedContests = allContests.filter(contest => contest.attended === true);
+      // 🔍 Filter only attended contests
+      const attendedContests = allContests.filter(contest => contest.attended === true);
 
-    return attendedContests;
+      return attendedContests;
+    }
+    catch(err)
+    {
+      return {error : "LC contest ratings couldn't be processed"}
+    }
 }
 
 async function fetchDifficultyStatslc(username) {
@@ -215,17 +232,22 @@ async function fetchDifficultyStatslc(username) {
     }
     `;
 
-    const response = await fetch('https://leetcode.com/graphql', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, variables: { username } })
-    });
+    try{
+      const response = await fetch('https://leetcode.com/graphql', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query, variables: { username } })
+      });
 
-    const data = await response.json();
-    return data.data.matchedUser.submitStats.acSubmissionNum.map(item => ({
-        difficulty: item.difficulty,
-        count: item.count
-    }));
+      const data = await response.json();
+      return data.data.matchedUser.submitStats.acSubmissionNum.map(item => ({
+          difficulty: item.difficulty,
+          count: item.count
+      }));
+    }
+    catch(err){
+    return {error : "LC difficulty wise data couldn't be fetched"}
+    }
 }
 
 async function fetchTopicStatslc(username) {
@@ -249,81 +271,71 @@ async function fetchTopicStatslc(username) {
         }
     }`;
 
-    const response = await fetch('https://leetcode.com/graphql', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, variables: { username } })
-    });
+    try {
+        const response = await fetch('https://leetcode.com/graphql', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query, variables: { username } })
+      });
 
-    const data = await response.json();
-    const tagData = data.data.matchedUser.tagProblemCounts;
-    const allTags = [...tagData.fundamental, ...tagData.intermediate, ...tagData.advanced];
-    return allTags.filter(tag => tag.problemsSolved > 0);
+      const data = await response.json();
+      const tagData = data.data.matchedUser.tagProblemCounts;
+      const allTags = [...tagData.fundamental, ...tagData.intermediate, ...tagData.advanced];
+      return allTags.filter(tag => tag.problemsSolved > 0);
+    } catch (err) {
+      return {error : "LC topic-wise data couldn't be fetched"}
+    }
 }
 
 
-async function getContestHistory(username) {
+async function getContestHistorygfg(username) {
   try {
-    const response = await fetch(`https://geeks-for-geeks-api.vercel.app/${username}`);
-    if (!response.ok) throw new Error('Failed to fetch contest history');
+    const response = await fetch(`https://mygfg-api.vercel.app/${username}/contest`);
+    if(!response.ok) throw new Error('Failed to fetch solved gfg Contest History')
     const data = await response.json();
-    const history = data?.contestRatings || [];
+    const contestCount = data["Contest Data"]["Total Contests"]
+    const history = data["Contest Details"].map((c) => {
+      return {
+        contestName : c.slug,
+        contestStartTime : c.start_time,
+        rank : c.rank,
+        ratingChange : c.rating_change,
+        displayRating : c.display_rating
+      }
+    })
 
-    return history.map((entry, i) => ({
-      contest: entry.contestName || `Contest ${i + 1}`,
-      rating: entry.rating,
-      rank: entry.rank,
-      date: entry.date || null
-    }));
+    return {
+      contestCount , history
+    }
+    
   } catch (err) {
-    console.error('Contest History Error:', err.message);
-    return [];
+    return {error : "GFG contest history couldn'tbe fetched"}
   }
 }
 
-async function getSolvedByDifficulty(username) {
+async function getSolvedByDifficultygfg(username) {
   try {
     const response = await fetch(`https://geeks-for-geeks-api.vercel.app/${username}`);
     if (!response.ok) throw new Error('Failed to fetch solved difficulty data');
     const data = await response.json();
 
     return {
-      easy: data?.easySolved || 0,
-      medium: data?.mediumSolved || 0,
-      hard: data?.hardSolved || 0
+      displayName : data["info"]["fullname"],
+      institute : data["info"]["institute"],
+      total : data["info"]["totalProblemsSolved"],
+      easy: data?.solvedStats?.easy.count || 0,
+      medium: data?.solvedStats?.medium.count || 0,
+      hard: data?.solvedStats?.hard.count || 0
     };
   } catch (err) {
-    console.error('Solved by Difficulty Error:', err.message);
-    return { easy: 0, medium: 0, hard: 0 };
+    return {error : "GFG difficulty wise data couldn't bew fetched"}
   }
 }
 
-async function getSolvedByTopic(username) {
-  try {
-    const response = await fetch(`https://geeks-for-geeks-api.vercel.app/${username}`);
-    if (!response.ok) throw new Error('Failed to fetch solved topic data');
-    const data = await response.json();
-    const topicsData = data?.topicWise || {};
-
-    const solvedTopics = {};
-    ALL_TOPICS.forEach(topic => {
-      solvedTopics[topic] = topicsData[topic]?.solved || 0;
-    });
-
-    return solvedTopics;
-  } catch (err) {
-    console.error('Solved by Topic Error:', err.message);
-    // Return all topics with 0 solved if error
-    return ALL_TOPICS.reduce((acc, topic) => {
-      acc[topic] = 0;
-      return acc;
-    }, {});
-  }
-}
 
 module.exports = {
      getLeetcodeStats,
      getGFGStats,
      getCodeforcesStats,
      getCodechefStats
-};
+}
