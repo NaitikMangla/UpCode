@@ -49,22 +49,22 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
-    leetcode_status: {
-        type: Number,
-        default: 0
-    },
-    gfg_status: {
-        type: Number,
-        default: 0
-    },
-    codeforces_status: {
-        type: Number,
-        default: 0
-    },
-    codechef_status: {
-        type: Number,
-        default: 0
-    },
+    // leetcode_status: {
+    //     type: Number,
+    //     default: 0
+    // },
+    // gfg_status: {
+    //     type: Number,
+    //     default: 0
+    // },
+    // codeforces_status: {
+    //     type: Number,
+    //     default: 0
+    // },
+    // codechef_status: {
+    //     type: Number,
+    //     default: 0
+    // },
     isleetcodeVerified: {
         type: Boolean,
         default: false
@@ -81,6 +81,10 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    isAdmin : {
+        type : Boolean,
+        default : false
+    }
 })
 
 const usermodel = mongoose.models.user || mongoose.model('user', userSchema); // content before OR is to check user is present or not otherwise create the user 

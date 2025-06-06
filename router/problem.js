@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const {isAdminCheck} = require('../middleware/adminCheck')
 
 const {
     handleRunResult,
@@ -19,8 +20,8 @@ router.all('/callback/submit', handleSubmitResult)
 router.get('/all', getAllProblem)
 router.get('/:id', getProblem)
 router.get('/get/:id', getCompleteProblem)
-router.post('/addProblem', addProblem)
-router.post('/deleteProblems', deleteProblems)
-router.post('/updateProblem', updateProblem)
+router.post('/addProblem',isAdminCheck, addProblem)
+router.post('/deleteProblems',isAdminCheck, deleteProblems)
+router.post('/updateProblem',isAdminCheck, updateProblem)
 
 module.exports = router

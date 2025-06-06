@@ -1,5 +1,6 @@
 const {get, set, remove} = require('../services/submitMap')
 const {get : jget, set : jset, remove : jremove} = require('../services/judgeMap')
+const jwt = require('jsonwebtoken');
 const problemModel = require('../model/problem');
 
 async function getProblem(req, res){
@@ -49,7 +50,9 @@ function stringToArray(str, regex)
 }
 
 async function addProblem(req, res, next){
+    
     const data = req.body
+    
     if(!Number(data.id))
     {
         return res.json({error : "Invalid ID"})
