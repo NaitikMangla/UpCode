@@ -277,7 +277,8 @@ async function handleRunResult(req, res, next) {
 }
 
 function handleSubmitResult(req, res, next){
-    const data = req.body
+    const data = req.body 
+    console.log("Handling submission")
     const socket = get(data.token)
     const judgeObj = jget(socket.id)
     const accepted = judgeSolution(getOutput(data), judgeObj.getExpectedOutput())
