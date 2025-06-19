@@ -35,7 +35,6 @@ class Judge{
         this.#counter++
         if(this.#counter >= this.#hiddenTestCases.length)
         {
-            
             this.end("accepted")
             return;
         }

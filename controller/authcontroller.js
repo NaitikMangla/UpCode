@@ -138,10 +138,12 @@ const register = async (req, res) => {
 const login = async (req, res) => {
     // console.log("logging...")
     const { email, password } = req.body;
+    console.log({email, password})
     if (!email || !password) return res.status(400).json({ error: 'All fields are required' });
 
     try {
         const user = await usermodel.findOne({ email });
+        console.log(user)
         if (!user || !(await bcrypt.compare(password, user.password))) {
             return res.status(400).json({ error: 'Invalid credentials' });
         }
